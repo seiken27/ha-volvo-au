@@ -16,10 +16,35 @@ class VolvoEntity(CoordinatorEntity[VolvoCoordinator]):
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
         super().__init__(coordinator)
-        vin = coordinator.client.vin
-        self._attr_device_info = DeviceInfo(
+        self._vin = coordinator.client.vin
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Build device info from the real model/registration where we have
+        it (fetched from /car-information/car during setup — see
+        config_flow.py), falling back gracefully for entries configured
+        before this data was persisted.
+        """
+        coordinator = self.coordinator
+        vin = self._vin
+        model = coordinator.model_name or "Volvo EV"
+        model_display = f"{model} ({coordinator.model_year})" if coordinator.model_year else model
+
+        name_parts = [model]
+        if coordinator.registration_plate:
+            name_parts.append(f"({coordinator.registration_plate})")
+        else:
+            name_parts.append(f"({vin[-6:]})")
+
+        sw_version = None
+        if coordinator.data:
+            sw_version = (coordinator.data.get("software_info") or {}).get("version")
+
+        return DeviceInfo(
             identifiers={(DOMAIN, vin)},
+            name=" ".join(name_parts),
             manufacturer="Volvo",
-            model="XC40 Recharge",  # could be derived from get_my_cars in v2
-            name=f"Volvo {vin}",
+            model=model_display,
+            serial_number=vin,
+            sw_version=sw_version,
         )

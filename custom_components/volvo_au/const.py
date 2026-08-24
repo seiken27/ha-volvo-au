@@ -8,6 +8,9 @@ CONF_DPOP_PRIVATE_KEY_PEM = "dpop_private_key_pem"
 CONF_REFRESH_TOKEN = "refresh_token"
 CONF_ID_TOKEN = "id_token"
 CONF_APP_INSTALLATION_ID = "app_installation_id"
+CONF_MODEL_NAME = "model_name"
+CONF_MODEL_YEAR = "model_year"
+CONF_REGISTRATION_PLATE = "registration_plate"
 
 # Cadence (seconds)
 POLL_IDLE = 300       # 5 min when the car is dormant

@@ -11,7 +11,7 @@ from homeassistant.components.number import (
     NumberMode,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfElectricCurrent
+from homeassistant.const import PERCENTAGE, UnitOfElectricCurrent
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -28,7 +28,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([VolvoChargeCurrentLimit(coordinator)])
+    async_add_entities(
+        [VolvoChargeCurrentLimit(coordinator), VolvoTargetSoc(coordinator)]
+    )
 
 
 class VolvoChargeCurrentLimit(VolvoEntity, NumberEntity):
@@ -63,4 +65,41 @@ class VolvoChargeCurrentLimit(VolvoEntity, NumberEntity):
         res = await self.coordinator.client.set_amp_limit(amps)
         if not res.get("ok"):
             _LOGGER.warning("SetAmpLimit failed: %s", res)
+        self.coordinator.note_command()
+
+
+class VolvoTargetSoc(VolvoEntity, NumberEntity):
+    """Target state-of-charge for charging, set as a custom (one-off) target."""
+
+    _attr_name = "Target SoC"
+    _attr_icon = "mdi:battery-charging-high"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_native_min_value = 20
+    _attr_native_max_value = 100
+    _attr_native_step = 10
+    _attr_mode = NumberMode.SLIDER
+
+    def __init__(self, coordinator: VolvoCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_target_soc"
+
+    @property
+    def native_value(self) -> float | None:
+        snap = self.coordinator.data or {}
+        v = (
+            ((snap.get("target_soc") or {}).get("targetSoc") or {}).get(
+                "batteryChargeTargetLevel"
+            )
+        )
+        try:
+            return float(v) if v is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    async def async_set_native_value(self, value: float) -> None:
+        level = int(round(value))
+        _LOGGER.debug("SetTargetSoc(%s%%)", level)
+        res = await self.coordinator.client.set_target_soc(level)
+        if not res.get("ok"):
+            _LOGGER.warning("SetTargetSoc failed: %s", res)
         self.coordinator.note_command()

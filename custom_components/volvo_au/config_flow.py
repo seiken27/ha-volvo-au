@@ -30,7 +30,10 @@ from .const import (
     CLIENT_ID,
     CONF_APP_INSTALLATION_ID,
     CONF_DPOP_PRIVATE_KEY_PEM,
+    CONF_MODEL_NAME,
+    CONF_MODEL_YEAR,
     CONF_REFRESH_TOKEN,
+    CONF_REGISTRATION_PLATE,
     CONF_VIN,
     DEFAULT_APP_INSTALLATION_ID,
     DOMAIN,
@@ -71,6 +74,7 @@ class VolvoAuConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._authorize_url: str | None = None
         self._tokens: dict[str, Any] | None = None
         self._cars: list[dict[str, Any]] = []
+        self._reauth_entry: config_entries.ConfigEntry | None = None
 
     # Step 1: present the URL the user must open
     async def async_step_user(self, user_input=None):
@@ -211,6 +215,7 @@ class VolvoAuConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         car = next((c for c in self._cars if c.get("vin") == vin), {})
         model = car.get("modelName") or "Volvo"
         year = car.get("modelYear")
+        plate = car.get("registrationPlate")
         title = f"{model} {year}" if year else f"{model} {vin}"
         return self.async_create_entry(
             title=title,
@@ -219,7 +224,106 @@ class VolvoAuConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 CONF_DPOP_PRIVATE_KEY_PEM: self._dpop_pem,
                 CONF_REFRESH_TOKEN: self._tokens["refresh_token"],
                 CONF_APP_INSTALLATION_ID: DEFAULT_APP_INSTALLATION_ID,
+                CONF_MODEL_NAME: model,
+                CONF_MODEL_YEAR: year,
+                CONF_REGISTRATION_PLATE: plate,
             },
+        )
+
+    # ----- reauth -----
+    # Triggered when the coordinator raises ConfigEntryAuthFailed (refresh
+    # token dead/revoked) — see coordinator.py's _is_auth_failure(). Reuses
+    # the same authorize-URL/paste-the-callback flow as initial setup, then
+    # updates the existing entry in place rather than creating a new one.
+
+    async def async_step_reauth(
+        self, entry_data: dict[str, Any]
+    ) -> config_entries.ConfigFlowResult:
+        self._reauth_entry = self.hass.config_entries.async_get_entry(
+            self.context["entry_id"]
+        )
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        if self._dpop_pem is None:
+            # Fresh DPoP keypair + PKCE pair, same as async_step_user — the
+            # old DPoP key is presumed dead along with the refresh token.
+            self._dpop_pem = generate_dpop_key_pem()
+            self._verifier, challenge = _pkce_pair()
+            params = {
+                "client_id": CLIENT_ID,
+                "redirect_uri": REDIRECT_URI,
+                "response_type": "code",
+                "scope": SCOPES,
+                "code_challenge": challenge,
+                "code_challenge_method": "S256",
+                "ui_locales": UI_LOCALES,
+                "prompt": "login",
+                "acr_values": ACR_VALUES,
+            }
+            self._authorize_url = f"{AUTHORIZE_URL}?{urlencode(params)}"
+
+        if user_input is None:
+            return self._show_reauth_form()
+
+        raw = user_input["redirect_url"].strip()
+        code = self._extract_code(raw)
+        if code == "__oauth_error__":
+            return self._show_reauth_form(error="oauth_error")
+        if not code:
+            return self._show_reauth_form(error="missing_code")
+
+        try:
+            tokens = await self._exchange_code(code)
+        except VolvoAuthError as e:
+            _LOGGER.warning("Volvo reauth token exchange failed: %s", e)
+            return self._show_reauth_form(error="auth_failed")
+
+        # Verify this login is for the same car as the entry being
+        # reauthenticated — otherwise someone could silently swap the
+        # entry onto a different vehicle by pasting a different account's
+        # callback URL.
+        session = async_get_clientsession(self.hass)
+        client = VolvoClient(
+            session,
+            vin="UNKNOWN",
+            dpop_key_pem=self._dpop_pem,
+            refresh_token=tokens["refresh_token"],
+        )
+        client._access_token = tokens["access_token"]
+        client._access_token_expires_at = (
+            time.time() + int(tokens.get("expires_in", 1800))
+        )
+        try:
+            cars = await client.list_cars()
+        except VolvoApiError as e:
+            _LOGGER.warning("list_cars failed during reauth: %s", e)
+            return self._show_reauth_form(error="list_cars_failed")
+
+        assert self._reauth_entry is not None
+        expected_vin = self._reauth_entry.data.get(CONF_VIN)
+        if expected_vin and not any(c.get("vin") == expected_vin for c in cars):
+            return self._show_reauth_form(error="vin_mismatch")
+
+        self.hass.config_entries.async_update_entry(
+            self._reauth_entry,
+            data={
+                **self._reauth_entry.data,
+                CONF_DPOP_PRIVATE_KEY_PEM: self._dpop_pem,
+                CONF_REFRESH_TOKEN: tokens["refresh_token"],
+            },
+        )
+        await self.hass.config_entries.async_reload(self._reauth_entry.entry_id)
+        return self.async_abort(reason="reauth_successful")
+
+    def _show_reauth_form(self, *, error: str | None = None):
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema({vol.Required("redirect_url"): str}),
+            description_placeholders={"authorize_url": self._authorize_url or ""},
+            errors={"base": error} if error else {},
         )
 
     # ----- internals -----
