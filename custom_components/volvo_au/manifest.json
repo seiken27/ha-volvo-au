@@ -8,5 +8,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/seiken27/ha-volvo-au/issues",
   "requirements": ["httpx[http2]>=0.27"],
-  "version": "0.1.0"
+  "version": "0.2.0"
 }
