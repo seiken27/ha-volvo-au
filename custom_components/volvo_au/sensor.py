@@ -30,6 +30,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity
+from .online import car_status, status_text
 
 
 def _path(snap: dict[str, Any], *keys: str) -> Any:
@@ -286,7 +287,7 @@ async def async_setup_entry(
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(VolvoSensor(coordinator, d) for d in SENSORS)
-    async_add_entities([VolvoLocationAddress(coordinator), VolvoSoftwareVersion(coordinator)])
+    async_add_entities([VolvoLocationAddress(coordinator), VolvoSoftwareVersion(coordinator), VolvoLastSeen(coordinator), VolvoConnection(coordinator)])
 
 
 class VolvoSensor(VolvoEntity, SensorEntity):
@@ -512,3 +513,37 @@ class VolvoSoftwareVersion(VolvoEntity, SensorEntity):
         if notes:
             attrs["release_notes"] = notes
         return attrs
+
+
+class VolvoConnection(VolvoEntity, SensorEntity):
+    """The car connection in one plain sentence, e.g. \"Offline since 19:32: the car has no mobile internet\".
+
+    The voice assistant reads states, not attributes, so the reason is in the state.
+    """
+
+    _attr_name = "Connection"
+    _attr_icon = "mdi:car-connected"
+
+    def __init__(self, coordinator: VolvoCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_connection"
+
+    @property
+    def native_value(self) -> str:
+        return status_text(car_status(self.coordinator.data))[:255]
+
+
+class VolvoLastSeen(VolvoEntity, SensorEntity):
+    """Newest car-side timestamp in the data Volvo sent (the car's own time, not our poll time)."""
+
+    _attr_name = "Last seen"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_icon = "mdi:car-wireless"
+
+    def __init__(self, coordinator: VolvoCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_last_seen"
+
+    @property
+    def native_value(self) -> datetime | None:
+        return car_status(self.coordinator.data).last_seen

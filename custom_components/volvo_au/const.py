@@ -40,4 +40,15 @@ ACR_VALUES = "urn:volvoid:aal:bronze:2sv"
 UI_LOCALES = "en-GB"
 
 API_BASE = "https://cepmobtoken.kr.prod.c3.volvocars.com"
+# Wait for a car command reply. A normal reply takes under 1 s; a stalled one did not come in 120 s (15 Nov 2026).
+COMMAND_TIMEOUT_S = 60.0
 DEFAULT_APP_INSTALLATION_ID = "2EE3A7A9-870F-4B74-BA09-E6BFB713CDA7"
+
+# Car connectivity (16 Nov 2026). The car went offline at 19:32 (weak mobile signal),
+# but Volvo's server still answered every command with HTTP 200, so HA believed the commands worked.
+# online.py reads an explicit connectivity value from the availability reply when Volvo sends one.
+# If there is none, it may use the newest car-side timestamp. That fallback is OFF (0) on purpose:
+# a parked, online car also keeps its old values for hours (on 16 Nov the sensors did not change from 15:53,
+# but the car was online until 19:32), so "old timestamp" alone would refuse commands on a healthy car
+# every morning. Set this to a number of seconds only after the live timestamp fields are known to be a heartbeat.
+OFFLINE_AFTER_S = 0

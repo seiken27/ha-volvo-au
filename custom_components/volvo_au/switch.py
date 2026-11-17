@@ -13,6 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity
+from .online import ensure_car_online
 from .schedule import current_schedule
 
 _LOGGER = logging.getLogger(__name__)
@@ -108,6 +109,7 @@ class VolvoClimatizationSwitch(VolvoEntity, SwitchEntity):
         }
 
     async def async_turn_on(self, **kwargs: Any) -> None:
+        ensure_car_online(self.coordinator)
         _LOGGER.debug("ClimatizationStart")
         res = await self.coordinator.client.climatization_start()
         if not res.get("ok"):
@@ -115,6 +117,7 @@ class VolvoClimatizationSwitch(VolvoEntity, SwitchEntity):
         self.coordinator.note_command()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
+        ensure_car_online(self.coordinator)
         _LOGGER.debug("ClimatizationStop")
         res = await self.coordinator.client.climatization_stop()
         if not res.get("ok"):
@@ -143,6 +146,7 @@ class VolvoAirPurificationSwitch(VolvoEntity, SwitchEntity):
         return status not in ("RUNNING_STATUS_OFF", "RUNNING_STATUS_UNSPECIFIED")
 
     async def async_turn_on(self, **kwargs: Any) -> None:
+        ensure_car_online(self.coordinator)
         _LOGGER.debug("PreCleaning start")
         res = await self.coordinator.client.precleaning_start()
         if not res.get("ok"):
@@ -150,6 +154,7 @@ class VolvoAirPurificationSwitch(VolvoEntity, SwitchEntity):
         self.coordinator.note_command()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
+        ensure_car_online(self.coordinator)
         _LOGGER.debug("PreCleaning stop")
         res = await self.coordinator.client.precleaning_stop()
         if not res.get("ok"):
