@@ -28,14 +28,18 @@ from .const import (
     ACR_VALUES,
     AUTHORIZE_URL,
     CLIENT_ID,
+    CONF_ACTIVE_INTERVAL,
     CONF_APP_INSTALLATION_ID,
     CONF_DPOP_PRIVATE_KEY_PEM,
+    CONF_IDLE_INTERVAL,
     CONF_MODEL_NAME,
     CONF_MODEL_YEAR,
     CONF_REFRESH_TOKEN,
     CONF_REGISTRATION_PLATE,
     CONF_VIN,
     DEFAULT_APP_INSTALLATION_ID,
+    POLL_ACTIVE,
+    POLL_IDLE,
     DOMAIN,
     REDIRECT_URI,
     SCOPES,
@@ -69,18 +73,35 @@ def _normalise_plate(value: Any) -> str:
 
 
 class VolvoAuOptionsFlow(config_entries.OptionsFlow):
-    """Options: an optional registration plate that overrides the one Volvo reports."""
+    """Options: poll intervals, and an optional registration plate that overrides the one Volvo reports."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         if user_input is not None:
             plate = _normalise_plate(user_input.get(CONF_REGISTRATION_PLATE))
+            options: dict[str, Any] = {
+                CONF_IDLE_INTERVAL: user_input[CONF_IDLE_INTERVAL],
+                CONF_ACTIVE_INTERVAL: user_input[CONF_ACTIVE_INTERVAL],
+            }
             # A blank plate removes the override, so the plate from Volvo is used again.
-            return self.async_create_entry(title="", data={CONF_REGISTRATION_PLATE: plate} if plate else {})
-        current = self.config_entry.options.get(CONF_REGISTRATION_PLATE, "")
+            if plate:
+                options[CONF_REGISTRATION_PLATE] = plate
+            return self.async_create_entry(title="", data=options)
+        opts = self.config_entry.options
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
-                {vol.Optional(CONF_REGISTRATION_PLATE, description={"suggested_value": current}): str}
+                {
+                    vol.Optional(CONF_IDLE_INTERVAL, default=opts.get(CONF_IDLE_INTERVAL, POLL_IDLE)): vol.All(
+                        int, vol.Range(min=60, max=86400)
+                    ),
+                    vol.Optional(CONF_ACTIVE_INTERVAL, default=opts.get(CONF_ACTIVE_INTERVAL, POLL_ACTIVE)): vol.All(
+                        int, vol.Range(min=10, max=3600)
+                    ),
+                    vol.Optional(
+                        CONF_REGISTRATION_PLATE,
+                        description={"suggested_value": opts.get(CONF_REGISTRATION_PLATE, "")},
+                    ): str,
+                }
             ),
         )
 

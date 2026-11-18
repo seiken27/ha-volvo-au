@@ -1,8 +1,8 @@
 """DataUpdateCoordinator for Volvo AU integration.
 
 Cadence:
-- idle: POLL_IDLE (5 min)
-- active: POLL_ACTIVE (1 min)  -> charging, any door/hood/tailgate open, recently commanded
+- idle: POLL_IDLE (5 min, an option) -> parked, even when plugged in but not charging
+- active: POLL_ACTIVE (1 min, an option) -> charging, in use, a door/window/lock open, climate running
 - post-command burst: POLL_POST_CMD_FAST (5 s) for POLL_POST_CMD_WINDOW (60 s)
 """
 
@@ -24,56 +24,10 @@ from .const import (
     POLL_POST_CMD_FAST,
     POLL_POST_CMD_WINDOW,
 )
+from .polltiers import is_active
 from .volvo_api import VolvoApiError, VolvoAuthError, VolvoClient
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def _is_active(snap: dict[str, Any]) -> bool:
-    """Heuristic: are we in 'something is happening' mode?"""
-    try:
-        batt = (snap.get("battery") or {}).get("battery") or {}
-        if batt.get("chargingStatus", "").startswith("CHARGING_STATUS_CHARGING"):
-            return True
-        if batt.get("chargerConnectionStatus", "").endswith("_CONNECTED"):
-            # Plugged in (not necessarily charging) -> still interesting
-            return True
-
-        ext = (snap.get("exterior") or {}).get("exterior") or {}
-        for k, v in ext.items():
-            if not isinstance(v, str):
-                continue
-            # Door/hood/tailgate/window/lock status enums end with _OPEN / _UNLOCKED
-            if v.endswith("_OPEN") or v.endswith("_UNLOCKED") or v.endswith("_AJAR"):
-                return True
-            # Alarm status enum ends with _TRIGGERED (AlarmStatus.ALARM_STATUS_TRIGGERED).
-            # Scanned by suffix like the rest of this loop since the exact flat
-            # JSON key it's exposed under (binary_sensor.py's _alarm() guesses
-            # "alarmStatus") isn't confirmed yet against a live payload.
-            if v.endswith("_TRIGGERED"):
-                return True
-
-        pc = (snap.get("parking_climatization") or {}).get("parkingClimatization") or {}
-        rs = pc.get("runningStatus", "")
-        if rs and rs not in ("RUNNING_STATUS_OFF", "RUNNING_STATUS_UNSPECIFIED"):
-            return True
-
-        pre = (snap.get("pre_cleaning") or {}).get("preCleaning") or {}
-        rs2 = pre.get("runningStatus", "")
-        if rs2 and rs2 not in ("RUNNING_STATUS_OFF", "RUNNING_STATUS_UNSPECIFIED"):
-            return True
-
-        avail = (snap.get("availability") or {}).get("availability") or {}
-        um = avail.get("usageMode", "")
-        if um and um not in (
-            "USAGE_MODE_ABANDONED",
-            "USAGE_MODE_UNSPECIFIED",
-            "USAGE_MODE_UNKNOWN",
-        ):
-            return True
-    except Exception:  # noqa: BLE001
-        pass
-    return False
 
 
 _AUTH_FAILURE_STATUS_CODES = ("400", "401", "403")
@@ -106,13 +60,18 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         model_year: int | str | None = None,
         registration_plate: str | None = None,
         car_info: dict[str, Any] | None = None,
+        idle_interval: int = POLL_IDLE,
+        active_interval: int = POLL_ACTIVE,
     ) -> None:
         super().__init__(
             hass,
             _LOGGER,
             name=f"{DOMAIN} {client.vin}",
-            update_interval=timedelta(seconds=POLL_IDLE),
+            update_interval=timedelta(seconds=idle_interval),
         )
+        self._idle_interval = idle_interval
+        # The active poll is never slower than the idle one.
+        self._active_interval = min(active_interval, idle_interval)
         self.client = client
         self.model_name = model_name
         self.model_year = model_year
@@ -193,8 +152,8 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.update_interval = timedelta(seconds=POLL_POST_CMD_FAST)
         elif self._post_trip_until > now:
             self.update_interval = timedelta(seconds=POLL_POST_CMD_FAST)
-        elif _is_active(snap):
-            self.update_interval = timedelta(seconds=POLL_ACTIVE)
+        elif is_active(snap):
+            self.update_interval = timedelta(seconds=self._active_interval)
         else:
-            self.update_interval = timedelta(seconds=POLL_IDLE)
+            self.update_interval = timedelta(seconds=self._idle_interval)
         return snap

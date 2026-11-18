@@ -15,10 +15,14 @@ from .const import (
     CONF_MODEL_NAME,
     CONF_MODEL_YEAR,
     CONF_REFRESH_TOKEN,
+    CONF_ACTIVE_INTERVAL,
+    CONF_IDLE_INTERVAL,
     CONF_REGISTRATION_PLATE,
     CONF_VIN,
     DEFAULT_APP_INSTALLATION_ID,
     DOMAIN,
+    POLL_ACTIVE,
+    POLL_IDLE,
 )
 from .coordinator import VolvoCoordinator
 from .volvo_api import VolvoClient
@@ -79,13 +83,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # An override typed in the options wins over the plate Volvo reports.
         registration_plate=entry.options.get(CONF_REGISTRATION_PLATE) or data.get(CONF_REGISTRATION_PLATE),
         car_info=car_info,
+        idle_interval=entry.options.get(CONF_IDLE_INTERVAL, POLL_IDLE),
+        active_interval=entry.options.get(CONF_ACTIVE_INTERVAL, POLL_ACTIVE),
     )
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     # The listener also fires when a rotated refresh token is saved to entry.data, so only
-    # reload when the options (the plate override) actually changed.
+    # reload when the options (plate override, poll intervals) actually changed.
     options_at_setup = dict(entry.options)
 
     async def _async_options_updated(hass: HomeAssistant, updated: ConfigEntry) -> None:
