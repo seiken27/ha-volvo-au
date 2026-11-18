@@ -14,6 +14,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    MATCH_ALL,
     PERCENTAGE,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
@@ -33,7 +34,7 @@ from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity, async_gate_unsupported
 from .online import car_status, status_text
-from .powertrain import build_week, drivetrain_type, engine_type, structure_week, tyre_pressure_kpa
+from .powertrain import flatten_attributes, build_week, drivetrain_type, engine_type, structure_week, tyre_pressure_kpa
 from .powertrain import battery_capacity_kwh as car_battery_capacity_kwh
 
 
@@ -98,7 +99,7 @@ def _tyre(wheel: str, label: str) -> VolvoSensorDescription:
     return VolvoSensorDescription(
         key=f"tyre_{wheel}_pressure",
         requires_capability="reportsAbsoluteTyrePressure",
-        name=f"Tyre {label} pressure",
+        translation_key=f"tyre_{wheel}_pressure",
         native_unit_of_measurement=UnitOfPressure.KPA,
         suggested_unit_of_measurement=UnitOfPressure.PSI,
         device_class=SensorDeviceClass.PRESSURE,
@@ -113,7 +114,6 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     VolvoSensorDescription(
         key="battery_soc",
         translation_key="battery_soc",
-        name="Battery",
         native_unit_of_measurement=PERCENTAGE,
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
@@ -122,7 +122,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     VolvoSensorDescription(
         key="range_km",
         requires_capability="reportsElectricRange",
-        name="Range",
+        translation_key="range_km",
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         device_class=SensorDeviceClass.DISTANCE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -130,7 +130,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="time_to_full",
-        name="Time to full",
+        translation_key="time_to_full",
         native_unit_of_measurement=UnitOfTime.MINUTES,
         device_class=SensorDeviceClass.DURATION,
         state_class=SensorStateClass.MEASUREMENT,
@@ -138,7 +138,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="charging_status",
-        name="Charging status",
+        translation_key="charging_status",
         icon="mdi:ev-station",
         value_fn=lambda s: _pretty_enum(
             _path(s, "battery", "battery", "chargingStatusV2")
@@ -149,7 +149,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="charger_connection",
-        name="Charger connection",
+        translation_key="charger_connection",
         icon="mdi:power-plug",
         value_fn=lambda s: _pretty_enum(
             _path(s, "battery", "battery", "chargerConnectionStatus"),
@@ -158,7 +158,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="charging_power",
-        name="Charging power",
+        translation_key="charging_power",
         native_unit_of_measurement=UnitOfPower.WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
@@ -166,7 +166,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="charging_current",
-        name="Charging current",
+        translation_key="charging_current",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         device_class=SensorDeviceClass.CURRENT,
         state_class=SensorStateClass.MEASUREMENT,
@@ -174,7 +174,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="charging_voltage",
-        name="Charging voltage",
+        translation_key="charging_voltage",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -183,7 +183,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     VolvoSensorDescription(
         key="avg_consumption",
         requires_capability="reportsAvgElectricConsumption",
-        name="Average consumption",
+        translation_key="avg_consumption",
         native_unit_of_measurement="kWh/100km",
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda s: _path(s, "battery", "battery", "averageEnergyConsumptionKwhPer100Km"),
@@ -191,7 +191,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     # Odometer
     VolvoSensorDescription(
         key="odometer_km",
-        name="Odometer",
+        translation_key="odometer_km",
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         device_class=SensorDeviceClass.DISTANCE,
         state_class=SensorStateClass.TOTAL_INCREASING,
@@ -201,7 +201,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="trip_manual_km",
-        name="Trip (manual)",
+        translation_key="trip_manual_km",
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         device_class=SensorDeviceClass.DISTANCE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -209,7 +209,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="trip_auto_km",
-        name="Trip (auto)",
+        translation_key="trip_auto_km",
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         device_class=SensorDeviceClass.DISTANCE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -218,7 +218,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     VolvoSensorDescription(
         key="avg_speed",
         requires_capability="reportsAvgSpeed",
-        name="Average speed",
+        translation_key="avg_speed",
         native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
         device_class=SensorDeviceClass.SPEED,
         state_class=SensorStateClass.MEASUREMENT,
@@ -228,7 +228,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     VolvoSensorDescription(
         key="target_soc",
         requires_capability="supportsTargetChargeLevelSetting",
-        name="Target SoC",
+        translation_key="target_soc",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda s: _path(s, "target_soc", "targetSoc", "batteryChargeTargetLevel"),
@@ -236,7 +236,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     VolvoSensorDescription(
         key="amp_limit",
         requires_capability="supportsChargeAmperageLimitSetting",
-        name="Charge current limit",
+        translation_key="amp_limit",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda s: _path(s, "amp_limit", "ampLimit", "ampLimit"),
@@ -244,7 +244,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     # Usage / availability
     VolvoSensorDescription(
         key="usage_mode",
-        name="Usage mode",
+        translation_key="usage_mode",
         icon="mdi:car-info",
         value_fn=lambda s: _pretty_enum(
             _path(s, "availability", "availability", "usageMode"),
@@ -254,7 +254,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     # Outside temperature reported by Volvo's weather service
     VolvoSensorDescription(
         key="exterior_temperature",
-        name="Exterior temperature",
+        translation_key="exterior_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
@@ -263,7 +263,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     # Service / health
     VolvoSensorDescription(
         key="distance_to_service",
-        name="Distance to service",
+        translation_key="distance_to_service",
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         device_class=SensorDeviceClass.DISTANCE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -271,7 +271,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="days_to_service",
-        name="Days to service",
+        translation_key="days_to_service",
         native_unit_of_measurement=UnitOfTime.DAYS,
         device_class=SensorDeviceClass.DURATION,
         state_class=SensorStateClass.MEASUREMENT,
@@ -279,7 +279,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="engine_hours_to_service",
-        name="Engine hours to service",
+        translation_key="engine_hours_to_service",
         requires_combustion_engine=True,
         native_unit_of_measurement=UnitOfTime.HOURS,
         device_class=SensorDeviceClass.DURATION,
@@ -290,7 +290,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     VolvoSensorDescription(
         key="air_quality_index",
         requires_capability="supportsAirPurificationInternalMeasurement",
-        name="Cabin air quality index",
+        translation_key="air_quality_index",
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda s: _path(
             s, "pre_cleaning", "preCleaning", "measuredAirQualityIndex"
@@ -299,7 +299,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     VolvoSensorDescription(
         key="air_purification_last_cycle",
         requires_capability="supportsAirPurification",
-        name="Air purification last cycle",
+        translation_key="air_purification_last_cycle",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda s: _epoch_to_dt(
             _path(s, "pre_cleaning", "preCleaning", "lastCycleCompleted", "seconds")
@@ -349,7 +349,7 @@ class VolvoSensor(VolvoEntity, SensorEntity):
 class VolvoLocationAddress(VolvoEntity, SensorEntity):
     """Reverse-geocoded street address of the last parked location (OSM Nominatim)."""
 
-    _attr_name = "Location address"
+    _attr_translation_key = "location_address"
     _attr_icon = "mdi:map-marker"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
@@ -517,7 +517,7 @@ class VolvoLocationAddress(VolvoEntity, SensorEntity):
 class VolvoVin(VolvoEntity, SensorEntity):
     """The VIN, with the registration plate (if known) as an attribute."""
 
-    _attr_name = "VIN"
+    _attr_translation_key = "vin"
     _attr_icon = "mdi:card-account-details-outline"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -547,7 +547,7 @@ class VolvoVin(VolvoEntity, SensorEntity):
 class VolvoBatteryCapacity(VolvoEntity, SensorEntity):
     """Battery capacity as the car reports it (from /car-information/car)."""
 
-    _attr_name = "Battery Capacity"
+    _attr_translation_key = "battery_capacity"
     _attr_device_class = SensorDeviceClass.ENERGY_STORAGE
     _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -568,11 +568,11 @@ class VolvoVehicleInfo(VolvoEntity, SensorEntity):
     without signing in again outside Home Assistant. The VIN is left out.
     """
 
-    _attr_name = "Vehicle Info"
+    _attr_translation_key = "vehicle_info"
     _attr_icon = "mdi:text-box-search-outline"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_entity_registry_enabled_default = False
-    _unrecorded_attributes = frozenset({"car"})
+    _unrecorded_attributes = frozenset({MATCH_ALL})  # one attribute per field: keep them out of the database
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
         super().__init__(coordinator)
@@ -586,17 +586,17 @@ class VolvoVehicleInfo(VolvoEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         car = {k: v for k, v in (self.coordinator.car_info or {}).items() if k != "vin"}
         return {
-            "car": car,
             "powertrain": engine_type(self.coordinator.car_info),
             "drivetrain": drivetrain_type(self.coordinator.car_info),
             "battery_capacity_kwh": car_battery_capacity_kwh(self.coordinator.car_info),
+            **flatten_attributes(car),
         }
 
 
 class VolvoSoftwareVersion(VolvoEntity, SensorEntity):
     """Car software version reported by the OTA discovery service."""
 
-    _attr_name = "Software version"
+    _attr_translation_key = "software_version"
     _attr_icon = "mdi:package-up"
     _attr_entity_category = None
 
@@ -636,7 +636,7 @@ class VolvoConnection(VolvoEntity, SensorEntity):
     The voice assistant reads states, not attributes, so the reason is in the state.
     """
 
-    _attr_name = "Connection"
+    _attr_translation_key = "connection"
     _attr_icon = "mdi:car-connected"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
@@ -651,7 +651,7 @@ class VolvoConnection(VolvoEntity, SensorEntity):
 class VolvoLastSeen(VolvoEntity, SensorEntity):
     """Newest car-side timestamp in the data Volvo sent (the car's own time, not our poll time)."""
 
-    _attr_name = "Last seen"
+    _attr_translation_key = "last_seen"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_icon = "mdi:car-wireless"
 

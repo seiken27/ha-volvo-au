@@ -13,6 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity, async_gate_unsupported
+from .button import raise_if_command_failed
 from .online import ensure_car_online
 from .powertrain import climate_action
 from .schedule import current_schedule
@@ -32,6 +33,7 @@ async def async_setup_entry(
             coordinator,
             "switch",
             [
+                VolvoChargingSwitch(coordinator),
                 VolvoChargeScheduleSwitch(coordinator),
                 VolvoClimatizationSwitch(coordinator),
                 VolvoAirPurificationSwitch(coordinator),
@@ -40,8 +42,43 @@ async def async_setup_entry(
     )
 
 
+class VolvoChargingSwitch(VolvoEntity, SwitchEntity):
+    """On while the car is charging. Turning it on or off sends Start or Stop charging."""
+
+    _attr_translation_key = "charging"
+    requires_capability = "supportsChargingFunctions"
+    _attr_icon = "mdi:ev-station"
+
+    def __init__(self, coordinator: VolvoCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_charging"
+
+    @property
+    def is_on(self) -> bool | None:
+        batt = ((self.coordinator.data or {}).get("battery") or {}).get("battery") or {}
+        status = batt.get("chargingStatusV2") or batt.get("chargingStatus")
+        if not isinstance(status, str) or status.endswith(("_UNSPECIFIED", "_UNKNOWN")):
+            return None
+        return status.startswith("CHARGING_STATUS_CHARGING")
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self._send("charge_start", "Start charging")
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self._send("charge_stop", "Stop charging")
+
+    async def _send(self, method: str, what: str) -> None:
+        ensure_car_online(self.coordinator)
+        res = await getattr(self.coordinator.client, method)()
+        if not isinstance(res, dict):
+            res = {"ok": False, "error": f"unexpected reply {res!r}"}
+        self.coordinator.note_command()
+        raise_if_command_failed(res, what)
+        await self.coordinator.async_request_refresh()
+
+
 class VolvoChargeScheduleSwitch(VolvoEntity, SwitchEntity):
-    _attr_name = "Charge schedule"
+    _attr_translation_key = "charging_schedule"
     requires_capability = "supportsGlobalChargeTimer"
     _attr_icon = "mdi:calendar-clock"
 
@@ -82,7 +119,7 @@ class VolvoChargeScheduleSwitch(VolvoEntity, SwitchEntity):
 
 
 class VolvoClimatizationSwitch(VolvoEntity, SwitchEntity):
-    _attr_name = "Climatization"
+    _attr_translation_key = "climatization"
     requires_capability = "supportsParkingClimatization"
     _attr_icon = "mdi:car-defrost-front"
 
@@ -138,7 +175,7 @@ class VolvoClimatizationSwitch(VolvoEntity, SwitchEntity):
 
 
 class VolvoAirPurificationSwitch(VolvoEntity, SwitchEntity):
-    _attr_name = "Air purification"
+    _attr_translation_key = "air_purification"
     requires_capability = "supportsAirPurification"
     _attr_icon = "mdi:air-purifier"
 

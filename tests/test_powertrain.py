@@ -168,3 +168,57 @@ def test_tyre_pressure_kpa():
     assert powertrain.tyre_pressure_kpa(health, "rear_left") is None
     assert powertrain.tyre_pressure_kpa(None, "front_left") is None
     assert powertrain.tyre_pressure_kpa(health, "spare") is None
+
+
+def test_flatten_attributes():
+    flat = powertrain.flatten_attributes(
+        {
+            "batteryCapacity": 78.182,
+            "supportsFlash": True,
+            "chargeAmperageMaxLimit": 32,
+            "accountLinkCreationOptions": ["SCAN_QR", "ASK_OWNER"],
+            "propulsion": {"engineType": "ENGINE_TYPE_ELECTRIC", "empty": None},
+            "bidirectionalChargingGridOperatorInverterNumber": None,
+            "blank": "",
+            "none": [],
+        }
+    )
+    assert flat == {
+        "battery_capacity": 78.182,
+        "supports_flash": True,
+        "charge_amperage_max_limit": 32,
+        "account_link_creation_options": "SCAN_QR, ASK_OWNER",
+        "propulsion_engine_type": "ENGINE_TYPE_ELECTRIC",
+    }
+    assert powertrain.flatten_attributes(None) == {}
+
+
+def test_driving_only_for_driving_mode():
+    assert powertrain.driving("USAGE_MODE_DRIVING") is True
+    for mode in ("USAGE_MODE_INACTIVE", "USAGE_MODE_ACTIVE", "USAGE_MODE_ABANDONED"):
+        assert powertrain.driving(mode) is False
+    assert powertrain.driving("USAGE_MODE_UNSPECIFIED") is None
+    assert powertrain.driving(None) is None
+
+
+def test_light_status_lists_each_light_and_flags_failures():
+    problem, attrs = powertrain.light_status(
+        {
+            "frontLeftTurnIndicatorWarning": "LIGHT_WARNING_NO_WARNING",
+            "rightLowBeamWarning": "LIGHT_WARNING_FAILURE",
+            "highBeamWarning": "LIGHT_WARNING_UNSPECIFIED",
+        }
+    )
+    assert problem is True
+    assert attrs == {
+        "front_left_turn_indicator": "ok",
+        "right_low_beam": "failure",
+        "high_beam": "unknown",
+    }
+
+
+def test_light_status_all_ok_and_nothing_known():
+    assert powertrain.light_status({"aWarning": "X_NO_WARNING"})[0] is False
+    assert powertrain.light_status({"aWarning": "X_UNKNOWN"})[0] is None
+    assert powertrain.light_status({}) == (None, {})
+    assert powertrain.light_status(None) == (None, {})

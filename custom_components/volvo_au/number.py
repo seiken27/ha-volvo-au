@@ -38,7 +38,7 @@ async def async_setup_entry(
 
 
 class VolvoChargeCurrentLimit(VolvoEntity, NumberEntity):
-    _attr_name = "Charge current limit"
+    _attr_translation_key = "charge_current_limit"
     requires_capability = "supportsChargeAmperageLimitSetting"
     _attr_icon = "mdi:current-ac"
     _attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
@@ -79,7 +79,7 @@ class VolvoChargeCurrentLimit(VolvoEntity, NumberEntity):
 class VolvoTargetSoc(VolvoEntity, NumberEntity):
     """Target state-of-charge for charging, set as a custom (one-off) target."""
 
-    _attr_name = "Target SoC"
+    _attr_translation_key = "target_soc"
     requires_capability = "supportsTargetChargeLevelSetting"
     _attr_icon = "mdi:battery-charging-high"
     _attr_native_unit_of_measurement = PERCENTAGE

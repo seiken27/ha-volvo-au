@@ -39,7 +39,7 @@ class VolvoScheduleTime(VolvoEntity, TimeEntity):
     def __init__(self, coordinator: VolvoCoordinator, *, kind: str) -> None:
         super().__init__(coordinator)
         self._kind = kind  # "start" or "stop"
-        self._attr_name = f"Charge schedule {kind}"
+        self._attr_translation_key = f"charge_schedule_{kind}"
         self._attr_unique_id = (
             f"{DOMAIN}_{coordinator.client.vin}_charge_schedule_{kind}"
         )

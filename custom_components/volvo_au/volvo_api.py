@@ -983,6 +983,12 @@ class VolvoClient:
             "/invocation.InvocationService/HonkFlash", body
         )
 
+    async def honk(self) -> dict[str, Any]:
+        """Sound the horn only (HonkFlash mode=1)."""
+        inner = self._pb_len_delim(1, self.vin.encode("ascii"))
+        outer = self._pb_len_delim(1, inner) + b"\x10\x01"  # f2 varint = 1
+        return await self._grpc_post("/invocation.InvocationService/HonkFlash", self._grpc_frame(outer))
+
     async def window_control(self, open: bool) -> dict[str, Any]:
         """Control windows (open or close).
         

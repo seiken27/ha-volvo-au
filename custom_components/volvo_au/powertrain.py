@@ -161,3 +161,74 @@ def tyre_pressure_kpa(health: dict | None, wheel: str) -> float | None:
         if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
             return round(float(value), 1)
     return None
+
+
+def flatten_attributes(data, prefix: str = "") -> dict:
+    """Turn nested data into flat snake_case attributes so Home Assistant lists them one per row.
+
+    ``{"batteryCapacity": 78.1, "propulsion": {"engineType": "X"}}`` becomes
+    ``{"battery_capacity": 78.1, "propulsion_engine_type": "X"}``. Empty values are left out and
+    lists of simple values become one comma-separated string.
+    """
+    import re
+
+    out: dict = {}
+    if not isinstance(data, dict):
+        return out
+    for key, value in data.items():
+        name = re.sub(r"[^0-9a-z]+", "_", re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\1", f"{prefix}{key}").lower()).strip("_")
+        if value is None or value == "" or value == [] or value == {}:
+            continue
+        if isinstance(value, dict):
+            out.update(flatten_attributes(value, f"{name}_"))
+        elif isinstance(value, (list, tuple)):
+            out[name] = ", ".join(str(item) for item in value)
+        else:
+            out[name] = value
+    return out
+
+
+def driving(usage_mode: Any) -> bool | None:
+    """True only while Volvo reports the car is being driven (``USAGE_MODE_DRIVING``).
+
+    Inactive, Active and Abandoned all mean not driving. ``None`` when Volvo says nothing useful.
+    """
+    if not isinstance(usage_mode, str) or not usage_mode:
+        return None
+    if usage_mode.endswith(("_UNSPECIFIED", "_UNKNOWN")):
+        return None
+    return usage_mode.endswith("_DRIVING")
+
+
+def _snake(name: str) -> str:
+    out = []
+    for ch in name:
+        if ch.isupper() and out:
+            out.append("_")
+        out.append(ch.lower())
+    return "".join(out)
+
+
+def light_status(light_warnings: Any) -> tuple[bool | None, dict[str, str]]:
+    """(any light failing?, per-light status) from the health ``lightWarnings`` map.
+
+    Names become ``front_left_turn_indicator`` (camelCase to snake_case, trailing ``warning`` dropped).
+    A value is ``ok``, ``failure`` or ``unknown``. The problem flag is ``None`` when no light reports.
+    """
+    if not isinstance(light_warnings, dict) or not light_warnings:
+        return None, {}
+    attrs: dict[str, str] = {}
+    saw_known = bad = False
+    for key, value in light_warnings.items():
+        name = _snake(str(key))
+        name = name[: -len("_warning")] if name.endswith("_warning") else name
+        if not isinstance(value, str) or value.endswith(("_UNSPECIFIED", "_UNKNOWN")):
+            attrs[name] = "unknown"
+            continue
+        saw_known = True
+        if value.endswith("_NO_WARNING"):
+            attrs[name] = "ok"
+        else:
+            attrs[name] = "failure"
+            bad = True
+    return (bad if saw_known else None), attrs
