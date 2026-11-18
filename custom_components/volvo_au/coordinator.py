@@ -46,6 +46,12 @@ def _is_active(snap: dict[str, Any]) -> bool:
             # Door/hood/tailgate/window/lock status enums end with _OPEN / _UNLOCKED
             if v.endswith("_OPEN") or v.endswith("_UNLOCKED") or v.endswith("_AJAR"):
                 return True
+            # Alarm status enum ends with _TRIGGERED (AlarmStatus.ALARM_STATUS_TRIGGERED).
+            # Scanned by suffix like the rest of this loop since the exact flat
+            # JSON key it's exposed under (binary_sensor.py's _alarm() guesses
+            # "alarmStatus") isn't confirmed yet against a live payload.
+            if v.endswith("_TRIGGERED"):
+                return True
 
         pc = (snap.get("parking_climatization") or {}).get("parkingClimatization") or {}
         rs = pc.get("runningStatus", "")
