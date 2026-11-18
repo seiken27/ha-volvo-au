@@ -237,9 +237,11 @@ class VolvoAuConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_pick_vin(self, user_input=None):
         # Build a {vin: friendly_label} mapping so users see car info, not raw VINs.
         choices: dict[str, str] = {}
+        # Cars already set up are left out, so a second car is added by running the setup again.
+        configured = {entry.data.get(CONF_VIN) for entry in self._async_current_entries()}
         for c in self._cars:
             vin = c.get("vin")
-            if not vin:
+            if not vin or vin in configured:
                 continue
             model = c.get("modelName") or "Volvo"
             year = c.get("modelYear")
@@ -253,6 +255,8 @@ class VolvoAuConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 label = f"{label} — {vin}"
             choices[vin] = label
+        if not choices:
+            return self.async_abort(reason="already_configured")
         if user_input is None:
             return self.async_show_form(
                 step_id="pick_vin",
