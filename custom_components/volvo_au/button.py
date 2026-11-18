@@ -88,7 +88,7 @@ class VolvoCommandButton(VolvoEntity, ButtonEntity):
         self._attr_name = name
         self._attr_icon = icon
         self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_{suffix}"
-        self.requires_combustion_engine = suffix == "engine_remote_start"
+        self.requires_combustion_engine = self.requires_engine_remote_start = suffix == "engine_remote_start"
 
     async def async_press(self) -> None:
         ensure_car_online(self.coordinator)  # raises when the car is known offline; nothing is sent

@@ -32,7 +32,8 @@ from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity, async_gate_combustion_only
 from .online import car_status, status_text
-from .powertrain import battery_capacity_kwh, drivetrain_type, engine_type
+from .powertrain import build_week, drivetrain_type, engine_type, structure_week
+from .powertrain import battery_capacity_kwh as car_battery_capacity_kwh
 
 
 def _path(snap: dict[str, Any], *keys: str) -> Any:
@@ -291,6 +292,8 @@ async def async_setup_entry(
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(async_gate_combustion_only(hass, coordinator, "sensor", [VolvoSensor(coordinator, d) for d in SENSORS]))
+    if car_battery_capacity_kwh(coordinator.car_info):
+        async_add_entities([VolvoBatteryCapacity(coordinator)])
     async_add_entities([VolvoLocationAddress(coordinator), VolvoSoftwareVersion(coordinator), VolvoVin(coordinator), VolvoVehicleInfo(coordinator), VolvoLastSeen(coordinator), VolvoConnection(coordinator)])
 
 
@@ -505,10 +508,29 @@ class VolvoVin(VolvoEntity, SensorEntity):
             "registration_plate": c.registration_plate,
             "model": c.model_name,
             "model_year": c.model_year,
+            "structure_week": structure_week(c.car_info),
+            "build_week": build_week(c.car_info),
             "powertrain": engine_type(c.car_info),
             "drivetrain": drivetrain_type(c.car_info),
         }
         return {k: v for k, v in attrs.items() if v}
+
+
+class VolvoBatteryCapacity(VolvoEntity, SensorEntity):
+    """Battery capacity as the car reports it (from /car-information/car)."""
+
+    _attr_name = "Battery Capacity"
+    _attr_device_class = SensorDeviceClass.ENERGY_STORAGE
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: VolvoCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_battery_capacity"
+
+    @property
+    def native_value(self) -> float | None:
+        return car_battery_capacity_kwh(self.coordinator.car_info)
 
 
 class VolvoVehicleInfo(VolvoEntity, SensorEntity):
@@ -539,7 +561,7 @@ class VolvoVehicleInfo(VolvoEntity, SensorEntity):
             "car": car,
             "powertrain": engine_type(self.coordinator.car_info),
             "drivetrain": drivetrain_type(self.coordinator.car_info),
-            "battery_capacity_kwh": battery_capacity_kwh(self.coordinator.car_info),
+            "battery_capacity_kwh": car_battery_capacity_kwh(self.coordinator.car_info),
         }
 
 
