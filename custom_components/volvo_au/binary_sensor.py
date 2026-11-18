@@ -33,6 +33,28 @@ def _open(snap: dict[str, Any], key: str) -> bool | None:
         return True
     if v.endswith("_CLOSED") or v.endswith("_UNSPECIFIED"):
         return False
+
+
+def _alarm(snap: dict[str, Any], key: str) -> bool | None:
+    """True when the car's theft-alarm enum reports TRIGGERED.
+
+    NOTE: the exact JSON key name below ("alarmStatus") is a best-effort
+    guess, not yet confirmed against a live ExteriorService/GetExterior
+    payload. The app-side proto enum is AlarmStatus with values
+    ALARM_STATUS_UNSPECIFIED / ALARM_STATUS_IDLE (or _OFF) /
+    ALARM_STATUS_TRIGGERED, matching the _TRIGGERED/_UNSPECIFIED suffix
+    convention used elsewhere in this file, but the flat "Digital Twin"
+    field name it's exposed under here hasn't been verified. If this sensor
+    stays stuck at "off"/unavailable, enable debug logging and inspect a
+    raw get_exterior() response to find the real key, then update it here.
+    """
+    v = _ext(snap, key)
+    if v is None:
+        return None
+    if v.endswith("_TRIGGERED"):
+        return True
+    if v.endswith("_IDLE") or v.endswith("_OFF") or v.endswith("_UNSPECIFIED"):
+        return False
     return None
 
 
@@ -155,6 +177,12 @@ DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
         name="Sunroof",
         device_class=BinarySensorDeviceClass.WINDOW,
         value_fn=lambda s: _open(s, "sunroof"),
+    ),
+    VolvoBinaryDescription(
+        key="alarm_triggered",
+        name="Alarm triggered",
+        device_class=BinarySensorDeviceClass.SAFETY,
+        value_fn=lambda s: _alarm(s, "alarmStatus"),
     ),
     VolvoBinaryDescription(
         key="charge_port",
