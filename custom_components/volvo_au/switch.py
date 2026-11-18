@@ -8,6 +8,7 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
@@ -78,8 +79,10 @@ class VolvoChargingSwitch(VolvoEntity, SwitchEntity):
 
 
 class VolvoChargeScheduleSwitch(VolvoEntity, SwitchEntity):
+    _attr_entity_category = EntityCategory.CONFIG
     _attr_translation_key = "charging_schedule"
     requires_capability = "supportsGlobalChargeTimer"
+    requires_data = "global_charge_timer"
     _attr_icon = "mdi:calendar-clock"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
@@ -121,6 +124,7 @@ class VolvoChargeScheduleSwitch(VolvoEntity, SwitchEntity):
 class VolvoClimatizationSwitch(VolvoEntity, SwitchEntity):
     _attr_translation_key = "climatization"
     requires_capability = "supportsParkingClimatization"
+    requires_data = "parking_climatization"
     _attr_icon = "mdi:car-defrost-front"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
@@ -179,6 +183,7 @@ class VolvoClimatizationSwitch(VolvoEntity, SwitchEntity):
 class VolvoAirPurificationSwitch(VolvoEntity, SwitchEntity):
     _attr_translation_key = "air_purification"
     requires_capability = "supportsAirPurification"
+    requires_data = "pre_cleaning"
     _attr_icon = "mdi:air-purifier"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:

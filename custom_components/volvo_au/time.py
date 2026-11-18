@@ -9,11 +9,12 @@ from typing import Any
 from homeassistant.components.time import TimeEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
-from .entity import VolvoEntity
+from .entity import VolvoEntity, async_gate_unsupported
 from .schedule import current_schedule
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,15 +27,21 @@ async def async_setup_entry(
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
-        [
-            VolvoScheduleTime(coordinator, kind="start"),
-            VolvoScheduleTime(coordinator, kind="stop"),
-        ]
+        async_gate_unsupported(
+            hass,
+            coordinator,
+            "time",
+            [VolvoScheduleTime(coordinator, kind="start"), VolvoScheduleTime(coordinator, kind="stop")],
+        )
     )
 
 
 class VolvoScheduleTime(VolvoEntity, TimeEntity):
+    _attr_entity_category = EntityCategory.CONFIG
     _attr_icon = "mdi:clock-outline"
+    # The same feature as the Charging Schedule switch.
+    requires_capability = "supportsGlobalChargeTimer"
+    requires_data = "global_charge_timer"
 
     def __init__(self, coordinator: VolvoCoordinator, *, kind: str) -> None:
         super().__init__(coordinator)

@@ -13,6 +13,7 @@ from homeassistant.components.number import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfElectricCurrent
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -42,6 +43,7 @@ async def async_setup_entry(
 class VolvoChargeCurrentLimit(VolvoEntity, NumberEntity):
     _attr_translation_key = "charge_current_limit"
     requires_capability = "supportsChargeAmperageLimitSetting"
+    requires_data = "amp_limit"
     _attr_icon = "mdi:current-ac"
     _attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
     _attr_native_min_value = 6
@@ -83,6 +85,7 @@ class VolvoTargetSoc(VolvoEntity, NumberEntity):
 
     _attr_translation_key = "target_soc"
     requires_capability = "supportsTargetChargeLevelSetting"
+    requires_data = "target_soc"
     _attr_icon = "mdi:battery-charging-high"
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_native_min_value = 20
@@ -121,6 +124,7 @@ class VolvoTargetSoc(VolvoEntity, NumberEntity):
 class VolvoClimateTemperature(VolvoEntity, NumberEntity, RestoreEntity):
     """Temperature to use the next time climatization is started (EXPERIMENTAL, untested on a real car)."""
 
+    _attr_entity_category = EntityCategory.CONFIG
     _attr_translation_key = "climate_temperature"
     _attr_icon = "mdi:thermometer"
     _attr_native_unit_of_measurement = "\u00b0C"

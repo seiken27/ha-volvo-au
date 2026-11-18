@@ -23,6 +23,9 @@ class VolvoEntity(CoordinatorEntity[VolvoCoordinator]):
     # Name of a flag in the car's own record (``supportsFlash``, ``reportsTyrePressure``, ...). The entity is
     # hidden when the car says that flag is false.
     requires_capability: str | None = None
+    # Name of a snapshot section (``pre_cleaning``, ``amp_limit``, ...). The entity is hidden when the first poll
+    # found that section empty, which catches cars that do not say they lack a feature but have no data for it.
+    requires_data: str | None = None
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
         super().__init__(coordinator)
@@ -59,12 +62,17 @@ class VolvoEntity(CoordinatorEntity[VolvoCoordinator]):
 
 def _is_gated(entity: VolvoEntity) -> bool:
     return bool(
-        entity.requires_combustion_engine or entity.requires_engine_remote_start or entity.requires_capability
+        entity.requires_combustion_engine
+        or entity.requires_engine_remote_start
+        or entity.requires_capability
+        or entity.requires_data
     )
 
 
-def _is_unsupported(entity: VolvoEntity, car: dict | None) -> bool:
-    """True only when the car's own record says this entity's feature is not there."""
+def _is_unsupported(entity: VolvoEntity, car: dict | None, no_data: frozenset[str] = frozenset()) -> bool:
+    """True when the car's own record says this entity's feature is not there, or the first poll had no data for it."""
+    if entity.requires_data and entity.requires_data in no_data:
+        return True
     if entity.requires_combustion_engine and has_combustion_engine(car) is False:
         return True
     if entity.requires_engine_remote_start and supports_engine_remote_start(car) is False:
@@ -90,7 +98,7 @@ def async_gate_unsupported(
         if not _is_gated(entity):
             kept.append(entity)
             continue
-        unsupported = _is_unsupported(entity, coordinator.car_info)
+        unsupported = _is_unsupported(entity, coordinator.car_info, getattr(coordinator, "no_data_sections", frozenset()))
         entity_id = registry.async_get_entity_id(domain, DOMAIN, entity.unique_id)
         entry = registry.async_get(entity_id) if entity_id else None
         if not unsupported:
@@ -100,3 +108,13 @@ def async_gate_unsupported(
         elif entry is not None and entry.disabled_by is None:
             registry.async_update_entity(entity_id, disabled_by=er.RegistryEntryDisabler.INTEGRATION)
     return kept
+
+
+@callback
+def async_remove_registered_entities(hass: HomeAssistant, domain: str, unique_ids: list[str]) -> None:
+    """Remove registry entries for entities this integration no longer provides."""
+    registry = er.async_get(hass)
+    for unique_id in unique_ids:
+        entity_id = registry.async_get_entity_id(domain, DOMAIN, unique_id)
+        if entity_id is not None:
+            registry.async_remove(entity_id)

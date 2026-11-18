@@ -160,12 +160,6 @@
       }
     },
     "button": {
-      "charge_start": {
-        "name": "Start charging"
-      },
-      "charge_stop": {
-        "name": "Stop charging"
-      },
       "engine_remote_start": {
         "name": "Engine remote start"
       },
@@ -274,9 +268,6 @@
       },
       "air_quality_index": {
         "name": "Cabin air quality index"
-      },
-      "amp_limit": {
-        "name": "Charge current limit"
       },
       "avg_consumption": {
         "name": "Average consumption"

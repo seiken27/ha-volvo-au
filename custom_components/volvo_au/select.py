@@ -9,6 +9,7 @@ from __future__ import annotations
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
@@ -35,6 +36,7 @@ async def async_setup_entry(
 class VolvoClimateHeating(VolvoEntity, SelectEntity, RestoreEntity):
     """Heating level for one seat or the steering wheel, used the next time climatization is started."""
 
+    _attr_entity_category = EntityCategory.CONFIG
     _attr_icon = "mdi:car-seat-heater"
 
     def __init__(self, coordinator: VolvoCoordinator, name: str, levels_key: str) -> None:

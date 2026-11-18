@@ -28,7 +28,7 @@ from .const import (
 )
 from .livestream import STREAMS, StreamPolicy
 from .polltiers import is_active
-from .powertrain import capability
+from .powertrain import capability, sections_without_data
 from .volvo_api import VolvoApiError, VolvoAuthError, VolvoClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -94,6 +94,9 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_command_at: float = 0.0
         self._post_trip_until: float = 0.0
         self._prev_in_use: bool | None = None
+        # Snapshot sections the first poll found empty; entities that depend on them are hidden (see entity.py).
+        self.no_data_sections: frozenset[str] = frozenset()
+        self._first_poll_done = False
         # Parking climate choices (temperature, seat and steering wheel heating), set by the number/select entities.
         self.climate_temperature: float | None = None
         self.climate_seats: dict[str, str] = {}
@@ -127,6 +130,11 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except VolvoApiError as e:
             raise UpdateFailed(f"api: {e}") from e
 
+        if not self._first_poll_done:
+            self._first_poll_done = True
+            self.no_data_sections = sections_without_data(snap)
+            if self.no_data_sections:
+                _LOGGER.info("No data for %s on the first poll; those entities are hidden", sorted(self.no_data_sections))
         self._adapt_interval(snap)
         return snap
 

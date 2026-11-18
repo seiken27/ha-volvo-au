@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
-from .entity import VolvoEntity, async_gate_unsupported
+from .entity import VolvoEntity, async_gate_unsupported, async_remove_registered_entities
 from .online import ensure_car_online
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,6 +25,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
+    # Start and stop charging are done by the Charging switch (19 Nov 2026).
+    async_remove_registered_entities(
+        hass, "button", [f"{DOMAIN}_{coordinator.client.vin}_{key}" for key in ("charge_start", "charge_stop")]
+    )
     buttons = [
         VolvoRefreshButton(coordinator),
         *(VolvoCommandButton(coordinator, spec) for spec in COMMAND_BUTTONS),
@@ -53,8 +57,6 @@ COMMAND_BUTTONS: list[tuple[str, str, str, str, str, dict[str, Any]]] = [
     ("window_open", "Open windows", "mdi:window-open", "Open windows", "window_control", {"open": True}),
     ("window_close", "Close windows", "mdi:window-closed", "Close windows", "window_control", {"open": False}),
     ("engine_remote_start", "Engine remote start", "mdi:engine", "Engine remote start", "engine_remote_start", {}),
-    ("charge_start", "Start charging", "mdi:electric-vehicle-charging", "Start charging", "charge_start", {}),
-    ("charge_stop", "Stop charging", "mdi:electric-vehicle-charging-off", "Stop charging", "charge_stop", {}),
     ("reduced_alarm", "Reduced alarm", "mdi:alarm-bell", "Lock with reduced alarm", "reduced_alarm", {}),
     ("tailgate_control", "Tailgate control", "mdi:truck-tailgate", "Open tailgate", "tailgate_control", {"open": True}),
     ("tailgate_close", "Close tailgate", "mdi:truck-tailgate-closed", "Close tailgate", "tailgate_control", {"open": False}),
@@ -68,8 +70,6 @@ BUTTON_CAPABILITIES = {
     "honk_flash": "supportsHonkAndFlash",
     "window_open": "supportsRemoteWindowControl",
     "window_close": "supportsRemoteWindowControl",
-    "charge_start": "supportsChargingFunctions",
-    "charge_stop": "supportsChargingFunctions",
     "reduced_alarm": "supportsLockReducedGuard",
     "tailgate_control": "supportsRemoteTrunkControl",
     "tailgate_close": "supportsRemoteTrunkControl",

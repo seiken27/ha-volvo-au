@@ -250,3 +250,29 @@ def light_status(light_warnings: Any) -> tuple[bool | None, dict[str, str]]:
             attrs[name] = "failure"
             bad = True
     return (bad if saw_known else None), attrs
+
+
+# Snapshot sections whose entities are hidden when the first poll comes back with nothing in them at all.
+WATCHED_SECTIONS = ("pre_cleaning", "global_charge_timer", "amp_limit", "target_soc", "parking_climatization")
+
+
+def has_data(value) -> bool:
+    """True when a reply holds at least one real value (None, empty containers and empty strings do not count)."""
+    if isinstance(value, dict):
+        return any(has_data(v) for v in value.values())
+    if isinstance(value, (list, tuple)):
+        return any(has_data(v) for v in value)
+    return value not in (None, "")
+
+
+def sections_without_data(snapshot) -> frozenset:
+    """Watched sections that answered with nothing. A failed read (``_error``) is not "nothing": it may recover."""
+    snapshot = snapshot or {}
+    empty = set()
+    for name in WATCHED_SECTIONS:
+        section = snapshot.get(name)
+        if isinstance(section, dict) and "_error" in section:
+            continue
+        if not has_data(section):
+            empty.add(name)
+    return frozenset(empty)
