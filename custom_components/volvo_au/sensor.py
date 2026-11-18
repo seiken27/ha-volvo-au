@@ -38,7 +38,7 @@ from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity, async_gate_unsupported, async_remove_registered_entities
 from . import journal
-from .online import car_status, status_text
+from .online import car_status, status_detail, status_text
 from .volvo_api import VolvoApiError
 from .powertrain import flatten_attributes, build_week, drivetrain_type, engine_type, structure_week, tyre_pressure_kpa
 from .powertrain import battery_capacity_kwh as car_battery_capacity_kwh
@@ -661,9 +661,9 @@ class VolvoSoftwareVersion(VolvoEntity, SensorEntity):
 
 
 class VolvoConnection(VolvoEntity, SensorEntity):
-    """The car connection in one plain sentence, e.g. \"Offline since 19:32: the car has no mobile internet\".
+    """The car connection in a few words, e.g. \"Offline: no internet\"; the explanation is the ``detail`` attribute.
 
-    The voice assistant reads states, not attributes, so the reason is in the state.
+    The reason is in the state (short) so a voice assistant can say it; the long sentence is an attribute.
     """
 
     _attr_translation_key = "connection"
@@ -677,6 +677,14 @@ class VolvoConnection(VolvoEntity, SensorEntity):
     @property
     def native_value(self) -> str:
         return status_text(car_status(self.coordinator.data))[:255]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        st = car_status(self.coordinator.data)
+        attrs: dict[str, Any] = {"detail": status_detail(st)}
+        if st.online is False and st.last_seen is not None:
+            attrs["offline_since"] = st.last_seen.isoformat()
+        return attrs
 
 
 class VolvoLastSeen(VolvoEntity, SensorEntity):

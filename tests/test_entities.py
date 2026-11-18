@@ -231,3 +231,22 @@ def test_start_charging_is_refused_when_not_plugged_in(volvo):
     )
     with pytest.raises(Exception, match="not plugged in"):
         asyncio.run(switch.async_turn_on())
+
+
+# ---- connection sensor ------------------------------------------------------------------------------------------
+
+
+def test_connection_state_is_short_and_has_no_clock_time(monkeypatch):
+    volvo = load_volvo(monkeypatch, FakeRegistry())
+    online = volvo.online
+
+    def status(is_online, reason=None):
+        raw = {"unavailableReason": reason} if reason else {}
+        return online.CarStatus(online=is_online, last_seen=None, source="test", raw=raw)
+
+    assert online.status_text(status(True)) == "Online"
+    assert online.status_text(status(None)) == "Unknown"
+    assert online.status_text(status(False, "UNAVAILABLE_REASON_CAR_IN_USE")) == "Offline: car in use"
+    assert online.status_text(status(False, "UNAVAILABLE_REASON_NO_INTERNET")) == "Offline: no internet"
+    assert online.status_text(status(False)) == "Offline: no connection"
+    assert online.status_detail(status(False, "UNAVAILABLE_REASON_CAR_IN_USE")).startswith("The car is in use. Commands cannot reach")

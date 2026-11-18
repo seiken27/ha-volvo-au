@@ -28,7 +28,7 @@ Personal project. Use at your own risk. Reverse-engineered from the iOS app; Vol
 - Usage mode (in-use / abandoned)
 - Software version (OTA)
 - Online: whether the car can receive commands now (from Volvo's availability reply), with the last time the car reported
-- Connection: the same in one plain sentence with the reason, e.g. "Offline since 19:32: the car has no mobile internet (weak signal?). Commands cannot reach the car until it is online again." (handy for voice assistants)
+- Connection: "Online", or "Offline: car in use" (short, so the history stays quiet); the full explanation and the time the car went offline are attributes (handy for voice assistants)
 
 ### Write
 
