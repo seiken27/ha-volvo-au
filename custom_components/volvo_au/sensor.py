@@ -663,6 +663,7 @@ class VolvoConnection(VolvoEntity, SensorEntity):
     """
 
     _attr_translation_key = "connection"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_icon = "mdi:car-connected"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
@@ -679,6 +680,7 @@ class VolvoLastSeen(VolvoEntity, SensorEntity):
 
     _attr_translation_key = "last_seen"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_icon = "mdi:car-wireless"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:

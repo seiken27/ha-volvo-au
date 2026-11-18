@@ -13,6 +13,7 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
@@ -338,6 +339,7 @@ class VolvoOnlineSensor(VolvoEntity, BinarySensorEntity):
     """Is the car online? Unknown (no state) when Volvo gives no evidence. See online.py."""
 
     _attr_translation_key = "online"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
