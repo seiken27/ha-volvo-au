@@ -191,3 +191,34 @@ def test_flatten_attributes():
         "propulsion_engine_type": "ENGINE_TYPE_ELECTRIC",
     }
     assert powertrain.flatten_attributes(None) == {}
+
+
+def test_driving_only_for_driving_mode():
+    assert powertrain.driving("USAGE_MODE_DRIVING") is True
+    for mode in ("USAGE_MODE_INACTIVE", "USAGE_MODE_ACTIVE", "USAGE_MODE_ABANDONED"):
+        assert powertrain.driving(mode) is False
+    assert powertrain.driving("USAGE_MODE_UNSPECIFIED") is None
+    assert powertrain.driving(None) is None
+
+
+def test_light_status_lists_each_light_and_flags_failures():
+    problem, attrs = powertrain.light_status(
+        {
+            "frontLeftTurnIndicatorWarning": "LIGHT_WARNING_NO_WARNING",
+            "rightLowBeamWarning": "LIGHT_WARNING_FAILURE",
+            "highBeamWarning": "LIGHT_WARNING_UNSPECIFIED",
+        }
+    )
+    assert problem is True
+    assert attrs == {
+        "front_left_turn_indicator": "ok",
+        "right_low_beam": "failure",
+        "high_beam": "unknown",
+    }
+
+
+def test_light_status_all_ok_and_nothing_known():
+    assert powertrain.light_status({"aWarning": "X_NO_WARNING"})[0] is False
+    assert powertrain.light_status({"aWarning": "X_UNKNOWN"})[0] is None
+    assert powertrain.light_status({}) == (None, {})
+    assert powertrain.light_status(None) == (None, {})

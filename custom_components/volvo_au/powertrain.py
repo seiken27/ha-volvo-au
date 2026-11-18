@@ -186,3 +186,49 @@ def flatten_attributes(data, prefix: str = "") -> dict:
         else:
             out[name] = value
     return out
+
+
+def driving(usage_mode: Any) -> bool | None:
+    """True only while Volvo reports the car is being driven (``USAGE_MODE_DRIVING``).
+
+    Inactive, Active and Abandoned all mean not driving. ``None`` when Volvo says nothing useful.
+    """
+    if not isinstance(usage_mode, str) or not usage_mode:
+        return None
+    if usage_mode.endswith(("_UNSPECIFIED", "_UNKNOWN")):
+        return None
+    return usage_mode.endswith("_DRIVING")
+
+
+def _snake(name: str) -> str:
+    out = []
+    for ch in name:
+        if ch.isupper() and out:
+            out.append("_")
+        out.append(ch.lower())
+    return "".join(out)
+
+
+def light_status(light_warnings: Any) -> tuple[bool | None, dict[str, str]]:
+    """(any light failing?, per-light status) from the health ``lightWarnings`` map.
+
+    Names become ``front_left_turn_indicator`` (camelCase to snake_case, trailing ``warning`` dropped).
+    A value is ``ok``, ``failure`` or ``unknown``. The problem flag is ``None`` when no light reports.
+    """
+    if not isinstance(light_warnings, dict) or not light_warnings:
+        return None, {}
+    attrs: dict[str, str] = {}
+    saw_known = bad = False
+    for key, value in light_warnings.items():
+        name = _snake(str(key))
+        name = name[: -len("_warning")] if name.endswith("_warning") else name
+        if not isinstance(value, str) or value.endswith(("_UNSPECIFIED", "_UNKNOWN")):
+            attrs[name] = "unknown"
+            continue
+        saw_known = True
+        if value.endswith("_NO_WARNING"):
+            attrs[name] = "ok"
+        else:
+            attrs[name] = "failure"
+            bad = True
+    return (bad if saw_known else None), attrs

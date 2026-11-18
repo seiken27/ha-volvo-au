@@ -18,6 +18,7 @@ from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity, async_gate_unsupported
 from .online import car_status
+from .powertrain import driving, light_status
 
 
 def _ext(snap: dict[str, Any], key: str) -> str | None:
@@ -79,37 +80,28 @@ def _warning(snap: dict[str, Any], key: str) -> bool | None:
     return not v.endswith("_NO_WARNING")
 
 
+def _health_lights(snap: dict[str, Any]) -> Any:
+    return ((snap.get("health") or {}).get("health") or {}).get("lightWarnings")
+
+
 def _any_light_warning(snap: dict[str, Any]) -> bool | None:
-    h = (snap.get("health") or {}).get("health") or {}
-    lw = h.get("lightWarnings") or {}
-    if not lw:
-        return None
-    saw_known = False
-    for v in lw.values():
-        if not isinstance(v, str):
-            continue
-        if v.endswith("_UNSPECIFIED") or v.endswith("_UNKNOWN"):
-            continue
-        saw_known = True
-        if not v.endswith("_NO_WARNING"):
-            return True
-    return False if saw_known else None
+    return light_status(_health_lights(snap))[0]
+
+
+def _light_attributes(snap: dict[str, Any]) -> dict[str, Any]:
+    return light_status(_health_lights(snap))[1]
 
 
 def _in_use(snap: dict[str, Any]) -> bool | None:
-    """True when Volvo reports the car is not abandoned (i.e. in use/driving)."""
+    """True only while the car is being driven (Inactive, Active and Abandoned are all False)."""
     avail = (snap.get("availability") or {}).get("availability") or {}
-    um = avail.get("usageMode")
-    if not isinstance(um, str) or not um:
-        return None
-    if um in ("USAGE_MODE_UNSPECIFIED", "USAGE_MODE_UNKNOWN"):
-        return None
-    return um != "USAGE_MODE_ABANDONED"
+    return driving(avail.get("usageMode"))
 
 
 @dataclass(frozen=True, kw_only=True)
 class VolvoBinaryDescription(BinarySensorEntityDescription):
     value_fn: Callable[[dict[str, Any]], bool | None]
+    attrs_fn: Callable[[dict[str, Any]], dict[str, Any]] | None = None
     requires_capability: str | None = None
 
 
@@ -266,9 +258,10 @@ DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
     VolvoBinaryDescription(
         key="light_warning",
         requires_capability="reportsLightWarnings",
-        name="Light warning",
+        name="Light status",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=_any_light_warning,
+        attrs_fn=_light_attributes,
     ),
     VolvoBinaryDescription(
         key="in_use",
@@ -308,6 +301,16 @@ class VolvoBinarySensor(VolvoEntity, BinarySensorEntity):
     def is_on(self) -> bool | None:
         try:
             return self.entity_description.value_fn(self.coordinator.data or {})
+        except Exception:  # noqa: BLE001
+            return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        fn = self.entity_description.attrs_fn
+        if fn is None:
+            return None
+        try:
+            return fn(self.coordinator.data or {}) or None
         except Exception:  # noqa: BLE001
             return None
 
