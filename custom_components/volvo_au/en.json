@@ -185,7 +185,7 @@
         "name": "Lock"
       },
       "tailgate_lock": {
-        "name": "Tailgate lock"
+        "name": "Boot lock"
       }
     },
     "number": {
@@ -302,7 +302,7 @@
         "name": "Charging"
       },
       "charging_schedule": {
-        "name": "Charging Schedule"
+        "name": "Charging schedule"
       },
       "climatization": {
         "name": "Climatization"
@@ -310,10 +310,10 @@
     },
     "time": {
       "charge_schedule_start": {
-        "name": "Charge schedule start"
+        "name": "Charging schedule start"
       },
       "charge_schedule_stop": {
-        "name": "Charge schedule stop"
+        "name": "Charging schedule end"
       }
     }
   }
