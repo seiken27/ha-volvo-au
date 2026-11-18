@@ -12,6 +12,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
@@ -35,6 +36,17 @@ def _open(snap: dict[str, Any], key: str) -> bool | None:
         return True
     if v.endswith("_CLOSED") or v.endswith("_UNSPECIFIED"):
         return False
+
+
+def has_sunroof(snap: dict[str, Any] | None) -> bool | None:
+    """Does the car report a sunroof? None when there is no exterior data yet.
+
+    A car without one has no ``sunroof`` value, or ``..._UNSPECIFIED``.
+    """
+    if not snap or not (snap.get("exterior") or {}).get("exterior"):
+        return None
+    v = _ext(snap, "sunroof")
+    return v is not None and not v.endswith("_UNSPECIFIED")
 
 
 def _alarm(snap: dict[str, Any], key: str) -> bool | None:
@@ -278,9 +290,16 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        async_gate_unsupported(hass, coordinator, "binary_sensor", [VolvoBinarySensor(coordinator, d) for d in DESCRIPTIONS])
-    )
+    entities = [VolvoBinarySensor(coordinator, d) for d in DESCRIPTIONS]
+    if has_sunroof(coordinator.data) is False:
+        # Only some cars (for example the XC40) have a sunroof. Do not create the sensor, and remove
+        # one that an earlier version created.
+        entities = [e for e in entities if e.entity_description.key != "sunroof"]
+        registry = er.async_get(hass)
+        stale = registry.async_get_entity_id("binary_sensor", DOMAIN, f"{DOMAIN}_{coordinator.client.vin}_sunroof")
+        if stale:
+            registry.async_remove(stale)
+    async_add_entities(async_gate_unsupported(hass, coordinator, "binary_sensor", entities))
     async_add_entities([VolvoOnlineSensor(coordinator)])
 
 

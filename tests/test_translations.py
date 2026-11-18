@@ -32,3 +32,10 @@ def test_reconfigure_keeps_the_entry_and_requires_the_same_car():
     assert "_get_reconfigure_entry()" in step
     assert "async_set_unique_id" not in step
     assert '"vin_mismatch"' in source
+
+
+def test_sunroof_sensor_is_only_created_for_cars_that_report_one():
+    source = (ROOT / "binary_sensor.py").read_text()
+    assert "has_sunroof(coordinator.data) is False" in source
+    assert 'e.entity_description.key != "sunroof"' in source
+    assert 'endswith("_UNSPECIFIED")' in source.split("def has_sunroof", 1)[1].split("def _alarm", 1)[0]
