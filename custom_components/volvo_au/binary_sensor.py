@@ -65,7 +65,8 @@ def _alarm(snap: dict[str, Any], key: str) -> bool | None:
     """
     v = _ext(snap, key)
     if v is None:
-        return None
+        # A car that has reported its exterior but sends no alarm state is not in alarm (shown as OK).
+        return False if (snap.get("exterior") or {}).get("exterior") else None
     if v.endswith("_TRIGGERED"):
         return True
     if v.endswith("_IDLE") or v.endswith("_OFF") or v.endswith("_UNSPECIFIED"):
@@ -188,7 +189,7 @@ DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
     VolvoBinaryDescription(
         key="alarm_triggered",
         translation_key="alarm_triggered",
-        device_class=BinarySensorDeviceClass.SAFETY,
+        device_class=BinarySensorDeviceClass.PROBLEM,  # shows OK / Problem
         value_fn=lambda s: _alarm(s, "alarmStatus"),
     ),
     VolvoBinaryDescription(
