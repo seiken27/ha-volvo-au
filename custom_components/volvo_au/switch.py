@@ -45,7 +45,7 @@ async def async_setup_entry(
 class VolvoChargingSwitch(VolvoEntity, SwitchEntity):
     """On while the car is charging. Turning it on or off sends Start or Stop charging."""
 
-    _attr_name = "Charging"
+    _attr_translation_key = "charging"
     requires_capability = "supportsChargingFunctions"
     _attr_icon = "mdi:ev-station"
 
@@ -78,7 +78,7 @@ class VolvoChargingSwitch(VolvoEntity, SwitchEntity):
 
 
 class VolvoChargeScheduleSwitch(VolvoEntity, SwitchEntity):
-    _attr_name = "Charging Schedule"
+    _attr_translation_key = "charging_schedule"
     requires_capability = "supportsGlobalChargeTimer"
     _attr_icon = "mdi:calendar-clock"
 
@@ -119,7 +119,7 @@ class VolvoChargeScheduleSwitch(VolvoEntity, SwitchEntity):
 
 
 class VolvoClimatizationSwitch(VolvoEntity, SwitchEntity):
-    _attr_name = "Climatization"
+    _attr_translation_key = "climatization"
     requires_capability = "supportsParkingClimatization"
     _attr_icon = "mdi:car-defrost-front"
 
@@ -175,7 +175,7 @@ class VolvoClimatizationSwitch(VolvoEntity, SwitchEntity):
 
 
 class VolvoAirPurificationSwitch(VolvoEntity, SwitchEntity):
-    _attr_name = "Air purification"
+    _attr_translation_key = "air_purification"
     requires_capability = "supportsAirPurification"
     _attr_icon = "mdi:air-purifier"
 

@@ -33,7 +33,7 @@ async def async_setup_entry(
 
 
 class VolvoRefreshButton(VolvoEntity, ButtonEntity):
-    _attr_name = "Refresh"
+    _attr_translation_key = "refresh"
     _attr_icon = "mdi:refresh"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
@@ -101,7 +101,7 @@ class VolvoCommandButton(VolvoEntity, ButtonEntity):
     def __init__(self, coordinator: VolvoCoordinator, spec: tuple) -> None:
         super().__init__(coordinator)
         suffix, name, icon, self._what, self._method, self._kwargs = spec
-        self._attr_name = name
+        self._attr_translation_key = suffix  # the name is in translations/en.json
         self._attr_icon = icon
         self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_{suffix}"
         self.requires_combustion_engine = self.requires_engine_remote_start = suffix == "engine_remote_start"

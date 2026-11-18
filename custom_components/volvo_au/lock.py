@@ -44,7 +44,7 @@ async def async_setup_entry(
 
 
 class VolvoLock(VolvoEntity, LockEntity):
-    _attr_name = "Lock"
+    _attr_translation_key = "lock"
     requires_capability = "supportsLock"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
@@ -86,7 +86,7 @@ class VolvoLock(VolvoEntity, LockEntity):
 class VolvoTailgateLock(VolvoEntity, LockEntity):
     """Tailgate lock: unlock pops the tailgate, lock re-locks the whole car."""
 
-    _attr_name = "Tailgate lock"
+    _attr_translation_key = "tailgate_lock"
     requires_capability = "supportsRemoteTrunkUnlock"
     _attr_icon = "mdi:car-back"
 

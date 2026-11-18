@@ -26,6 +26,16 @@
         "data_description": {
           "redirect_url": "Paste the full `volvooncall://…` URL, or just the code after `code=`."
         }
+      },
+      "reconfigure": {
+        "title": "Change the Volvo account",
+        "description": "Sign in with the Volvo ID that has access to this car. The car, its entities and their history are kept.\n\n**[👉 Open Volvo sign-in in a new tab]({authorize_url})**\n\nSign in with your Volvo ID (email + password) and complete 2FA.\n\nWhen the browser tries to open `volvooncall://auth/callback?code=…` it will fail to launch — that's expected. Copy the URL from your browser's address bar (or just the `code=…` part, or just the code itself) and paste it below.",
+        "data": {
+          "redirect_url": "Callback URL or code"
+        },
+        "data_description": {
+          "redirect_url": "Paste the full `volvooncall://…` URL, or just the code after `code=`."
+        }
       }
     },
     "error": {
@@ -39,7 +49,8 @@
     },
     "abort": {
       "already_configured": "This VIN is already configured.",
-      "reauth_successful": "Re-authentication was successful."
+      "reauth_successful": "Re-authentication was successful.",
+      "reconfigure_successful": "Account updated."
     }
   },
   "options": {
@@ -52,6 +63,273 @@
         "data_description": {
           "registration_plate": "Shown in the device name. Volvo normally supplies this itself; only fill it in to override it. Leave blank to use the plate Volvo reports."
         }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "alarm_triggered": {
+        "name": "Alarm triggered"
+      },
+      "brake_fluid_warning": {
+        "name": "Brake fluid low"
+      },
+      "charge_port": {
+        "name": "Charge port"
+      },
+      "door_fl": {
+        "name": "Front-left door"
+      },
+      "door_fr": {
+        "name": "Front-right door"
+      },
+      "door_rl": {
+        "name": "Rear-left door"
+      },
+      "door_rr": {
+        "name": "Rear-right door"
+      },
+      "engine_coolant_warning": {
+        "name": "Engine coolant low"
+      },
+      "hood": {
+        "name": "Hood"
+      },
+      "in_use": {
+        "name": "In use"
+      },
+      "light_warning": {
+        "name": "Light status"
+      },
+      "low_voltage_battery_warning": {
+        "name": "12V battery low"
+      },
+      "oil_level_warning": {
+        "name": "Oil level low"
+      },
+      "online": {
+        "name": "Online"
+      },
+      "plugged_in": {
+        "name": "Plugged in"
+      },
+      "service_warning": {
+        "name": "Service warning"
+      },
+      "sunroof": {
+        "name": "Sunroof"
+      },
+      "tailgate": {
+        "name": "Tailgate"
+      },
+      "tyre_fl_warning": {
+        "name": "Tyre front-left pressure"
+      },
+      "tyre_fr_warning": {
+        "name": "Tyre front-right pressure"
+      },
+      "tyre_rl_warning": {
+        "name": "Tyre rear-left pressure"
+      },
+      "tyre_rr_warning": {
+        "name": "Tyre rear-right pressure"
+      },
+      "washer_fluid_warning": {
+        "name": "Washer fluid low"
+      },
+      "window_fl": {
+        "name": "Front-left window"
+      },
+      "window_fr": {
+        "name": "Front-right window"
+      },
+      "window_rl": {
+        "name": "Rear-left window"
+      },
+      "window_rr": {
+        "name": "Rear-right window"
+      }
+    },
+    "button": {
+      "charge_start": {
+        "name": "Start charging"
+      },
+      "charge_stop": {
+        "name": "Stop charging"
+      },
+      "engine_remote_start": {
+        "name": "Engine remote start"
+      },
+      "flash": {
+        "name": "Flash"
+      },
+      "honk": {
+        "name": "Honk"
+      },
+      "honk_flash": {
+        "name": "Honk & flash"
+      },
+      "reduced_alarm": {
+        "name": "Reduced alarm"
+      },
+      "refresh": {
+        "name": "Refresh"
+      },
+      "tailgate_close": {
+        "name": "Close tailgate"
+      },
+      "tailgate_control": {
+        "name": "Tailgate control"
+      },
+      "window_close": {
+        "name": "Close windows"
+      },
+      "window_open": {
+        "name": "Open windows"
+      }
+    },
+    "device_tracker": {
+      "location": {
+        "name": "Location"
+      }
+    },
+    "lock": {
+      "lock": {
+        "name": "Lock"
+      },
+      "tailgate_lock": {
+        "name": "Tailgate lock"
+      }
+    },
+    "number": {
+      "charge_current_limit": {
+        "name": "Charge current limit"
+      },
+      "target_soc": {
+        "name": "Target SoC"
+      }
+    },
+    "sensor": {
+      "air_purification_last_cycle": {
+        "name": "Air purification last cycle"
+      },
+      "air_quality_index": {
+        "name": "Cabin air quality index"
+      },
+      "amp_limit": {
+        "name": "Charge current limit"
+      },
+      "avg_consumption": {
+        "name": "Average consumption"
+      },
+      "avg_speed": {
+        "name": "Average speed"
+      },
+      "battery_capacity": {
+        "name": "Battery Capacity"
+      },
+      "battery_soc": {
+        "name": "Battery"
+      },
+      "charger_connection": {
+        "name": "Charger connection"
+      },
+      "charging_current": {
+        "name": "Charging current"
+      },
+      "charging_power": {
+        "name": "Charging power"
+      },
+      "charging_status": {
+        "name": "Charging status"
+      },
+      "charging_voltage": {
+        "name": "Charging voltage"
+      },
+      "connection": {
+        "name": "Connection"
+      },
+      "days_to_service": {
+        "name": "Days to service"
+      },
+      "distance_to_service": {
+        "name": "Distance to service"
+      },
+      "engine_hours_to_service": {
+        "name": "Engine hours to service"
+      },
+      "exterior_temperature": {
+        "name": "Exterior temperature"
+      },
+      "last_seen": {
+        "name": "Last seen"
+      },
+      "location_address": {
+        "name": "Location address"
+      },
+      "odometer_km": {
+        "name": "Odometer"
+      },
+      "range_km": {
+        "name": "Range"
+      },
+      "software_version": {
+        "name": "Software version"
+      },
+      "target_soc": {
+        "name": "Target SoC"
+      },
+      "time_to_full": {
+        "name": "Time to full"
+      },
+      "trip_auto_km": {
+        "name": "Trip (auto)"
+      },
+      "trip_manual_km": {
+        "name": "Trip (manual)"
+      },
+      "tyre_front_left_pressure": {
+        "name": "Tyre front-left pressure"
+      },
+      "tyre_front_right_pressure": {
+        "name": "Tyre front-right pressure"
+      },
+      "tyre_rear_left_pressure": {
+        "name": "Tyre rear-left pressure"
+      },
+      "tyre_rear_right_pressure": {
+        "name": "Tyre rear-right pressure"
+      },
+      "usage_mode": {
+        "name": "Usage mode"
+      },
+      "vehicle_info": {
+        "name": "Vehicle Info"
+      },
+      "vin": {
+        "name": "VIN"
+      }
+    },
+    "switch": {
+      "air_purification": {
+        "name": "Air purification"
+      },
+      "charging": {
+        "name": "Charging"
+      },
+      "charging_schedule": {
+        "name": "Charging Schedule"
+      },
+      "climatization": {
+        "name": "Climatization"
+      }
+    },
+    "time": {
+      "charge_schedule_start": {
+        "name": "Charge schedule start"
+      },
+      "charge_schedule_stop": {
+        "name": "Charge schedule stop"
       }
     }
   }
