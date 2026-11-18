@@ -74,13 +74,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         client,
         model_name=data.get(CONF_MODEL_NAME),
         model_year=data.get(CONF_MODEL_YEAR),
-        registration_plate=data.get(CONF_REGISTRATION_PLATE),
+        # An override typed in the options wins over the plate Volvo reports.
+        registration_plate=entry.options.get(CONF_REGISTRATION_PLATE) or data.get(CONF_REGISTRATION_PLATE),
     )
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # The listener also fires when a rotated refresh token is saved to entry.data, so only
+    # reload when the options (the plate override) actually changed.
+    options_at_setup = dict(entry.options)
+
+    async def _async_options_updated(hass: HomeAssistant, updated: ConfigEntry) -> None:
+        if dict(updated.options) != options_at_setup:
+            await hass.config_entries.async_reload(updated.entry_id)
+
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     return True
+
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

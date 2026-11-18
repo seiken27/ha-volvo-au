@@ -63,10 +63,36 @@ def _pkce_pair() -> tuple[str, str]:
     return verifier, challenge
 
 
+def _normalise_plate(value: Any) -> str:
+    """Return the plate upper-cased with surrounding whitespace removed ('' when unset)."""
+    return str(value or "").strip().upper()
+
+
+class VolvoAuOptionsFlow(config_entries.OptionsFlow):
+    """Options: an optional registration plate that overrides the one Volvo reports."""
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None):
+        if user_input is not None:
+            plate = _normalise_plate(user_input.get(CONF_REGISTRATION_PLATE))
+            # A blank plate removes the override, so the plate from Volvo is used again.
+            return self.async_create_entry(title="", data={CONF_REGISTRATION_PLATE: plate} if plate else {})
+        current = self.config_entry.options.get(CONF_REGISTRATION_PLATE, "")
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {vol.Optional(CONF_REGISTRATION_PLATE, description={"suggested_value": current}): str}
+            ),
+        )
+
+
 class VolvoAuConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle the OAuth-paste config flow."""
 
     VERSION = 1
+
+    @staticmethod
+    def async_get_options_flow(config_entry):
+        return VolvoAuOptionsFlow()
 
     def __init__(self) -> None:
         self._dpop_pem: str | None = None

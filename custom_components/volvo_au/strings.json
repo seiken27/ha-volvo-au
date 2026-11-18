@@ -41,5 +41,18 @@
       "already_configured": "This VIN is already configured.",
       "reauth_successful": "Re-authentication was successful."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Volvo AU options",
+        "data": {
+          "registration_plate": "Registration plate (optional)"
+        },
+        "data_description": {
+          "registration_plate": "Shown in the device name. Volvo normally supplies this itself; only fill it in to override it. Leave blank to use the plate Volvo reports."
+        }
+      }
+    }
   }
 }

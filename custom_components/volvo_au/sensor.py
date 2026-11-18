@@ -25,6 +25,7 @@ from homeassistant.const import (
     UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
@@ -287,7 +288,7 @@ async def async_setup_entry(
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(VolvoSensor(coordinator, d) for d in SENSORS)
-    async_add_entities([VolvoLocationAddress(coordinator), VolvoSoftwareVersion(coordinator), VolvoLastSeen(coordinator), VolvoConnection(coordinator)])
+    async_add_entities([VolvoLocationAddress(coordinator), VolvoSoftwareVersion(coordinator), VolvoVin(coordinator), VolvoLastSeen(coordinator), VolvoConnection(coordinator)])
 
 
 class VolvoSensor(VolvoEntity, SensorEntity):
@@ -476,6 +477,32 @@ class VolvoLocationAddress(VolvoEntity, SensorEntity):
             if best is None or float(radius) < best[0]:
                 best = (float(radius), name)
         return best[1] if best else None
+
+
+class VolvoVin(VolvoEntity, SensorEntity):
+    """The VIN, with the registration plate (if known) as an attribute."""
+
+    _attr_name = "VIN"
+    _attr_icon = "mdi:card-account-details-outline"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: VolvoCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_vin"
+
+    @property
+    def native_value(self) -> str:
+        return self._vin
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        c = self.coordinator
+        attrs = {
+            "registration_plate": c.registration_plate,
+            "model": c.model_name,
+            "model_year": c.model_year,
+        }
+        return {k: v for k, v in attrs.items() if v}
 
 
 class VolvoSoftwareVersion(VolvoEntity, SensorEntity):

@@ -30,11 +30,8 @@ class VolvoEntity(CoordinatorEntity[VolvoCoordinator]):
         model = coordinator.model_name or "Volvo EV"
         model_display = f"{model} ({coordinator.model_year})" if coordinator.model_year else model
 
-        name_parts = [model]
-        if coordinator.registration_plate:
-            name_parts.append(f"({coordinator.registration_plate})")
-        else:
-            name_parts.append(f"({vin[-6:]})")
+        # Model + last 6 of the VIN: stable, so entity IDs never depend on the plate.
+        name_parts = [model, f"({vin[-6:]})"]
 
         sw_version = None
         if coordinator.data:
