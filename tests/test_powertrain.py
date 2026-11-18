@@ -168,3 +168,26 @@ def test_tyre_pressure_kpa():
     assert powertrain.tyre_pressure_kpa(health, "rear_left") is None
     assert powertrain.tyre_pressure_kpa(None, "front_left") is None
     assert powertrain.tyre_pressure_kpa(health, "spare") is None
+
+
+def test_flatten_attributes():
+    flat = powertrain.flatten_attributes(
+        {
+            "batteryCapacity": 78.182,
+            "supportsFlash": True,
+            "chargeAmperageMaxLimit": 32,
+            "accountLinkCreationOptions": ["SCAN_QR", "ASK_OWNER"],
+            "propulsion": {"engineType": "ENGINE_TYPE_ELECTRIC", "empty": None},
+            "bidirectionalChargingGridOperatorInverterNumber": None,
+            "blank": "",
+            "none": [],
+        }
+    )
+    assert flat == {
+        "battery_capacity": 78.182,
+        "supports_flash": True,
+        "charge_amperage_max_limit": 32,
+        "account_link_creation_options": "SCAN_QR, ASK_OWNER",
+        "propulsion_engine_type": "ENGINE_TYPE_ELECTRIC",
+    }
+    assert powertrain.flatten_attributes(None) == {}

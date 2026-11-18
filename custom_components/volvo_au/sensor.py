@@ -14,6 +14,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    MATCH_ALL,
     PERCENTAGE,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
@@ -33,7 +34,7 @@ from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity, async_gate_unsupported
 from .online import car_status, status_text
-from .powertrain import build_week, drivetrain_type, engine_type, structure_week, tyre_pressure_kpa
+from .powertrain import flatten_attributes, build_week, drivetrain_type, engine_type, structure_week, tyre_pressure_kpa
 from .powertrain import battery_capacity_kwh as car_battery_capacity_kwh
 
 
@@ -572,7 +573,7 @@ class VolvoVehicleInfo(VolvoEntity, SensorEntity):
     _attr_icon = "mdi:text-box-search-outline"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_entity_registry_enabled_default = False
-    _unrecorded_attributes = frozenset({"car"})
+    _unrecorded_attributes = frozenset({MATCH_ALL})  # one attribute per field: keep them out of the database
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
         super().__init__(coordinator)
@@ -586,10 +587,10 @@ class VolvoVehicleInfo(VolvoEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         car = {k: v for k, v in (self.coordinator.car_info or {}).items() if k != "vin"}
         return {
-            "car": car,
             "powertrain": engine_type(self.coordinator.car_info),
             "drivetrain": drivetrain_type(self.coordinator.car_info),
             "battery_capacity_kwh": car_battery_capacity_kwh(self.coordinator.car_info),
+            **flatten_attributes(car),
         }
 
 

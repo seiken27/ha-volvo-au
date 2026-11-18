@@ -161,3 +161,28 @@ def tyre_pressure_kpa(health: dict | None, wheel: str) -> float | None:
         if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
             return round(float(value), 1)
     return None
+
+
+def flatten_attributes(data, prefix: str = "") -> dict:
+    """Turn nested data into flat snake_case attributes so Home Assistant lists them one per row.
+
+    ``{"batteryCapacity": 78.1, "propulsion": {"engineType": "X"}}`` becomes
+    ``{"battery_capacity": 78.1, "propulsion_engine_type": "X"}``. Empty values are left out and
+    lists of simple values become one comma-separated string.
+    """
+    import re
+
+    out: dict = {}
+    if not isinstance(data, dict):
+        return out
+    for key, value in data.items():
+        name = re.sub(r"[^0-9a-z]+", "_", re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\1", f"{prefix}{key}").lower()).strip("_")
+        if value is None or value == "" or value == [] or value == {}:
+            continue
+        if isinstance(value, dict):
+            out.update(flatten_attributes(value, f"{name}_"))
+        elif isinstance(value, (list, tuple)):
+            out[name] = ", ".join(str(item) for item in value)
+        else:
+            out[name] = value
+    return out
