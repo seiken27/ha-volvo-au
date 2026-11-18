@@ -12,6 +12,7 @@ CONF_MODEL_NAME = "model_name"
 CONF_MODEL_YEAR = "model_year"
 CONF_REGISTRATION_PLATE = "registration_plate"
 CONF_IDLE_INTERVAL = "idle_interval"      # options: seconds between polls while the car is quiet
+CONF_DRIVING_JOURNAL = "driving_journal"      # options: read the trip journal (opt in, default off)
 CONF_LIVE_UPDATES = "live_updates"          # options: keep update streams open (default on)
 CONF_ACTIVE_INTERVAL = "active_interval"  # options: seconds between polls while something is happening
 

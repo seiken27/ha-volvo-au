@@ -90,6 +90,7 @@ def test_engine_remote_start_flag_and_structure_week_edge_cases():
 # The capability flags every gated entity reads, as the real Australian XC40 reported them (18 Nov 2026).
 # reportsLightWarnings is shortened: only whether it has entries matters.
 XC40_FLAGS = {
+    "supportsDrivingJournal": True,
     "reportsAvgElectricConsumption": True,
     "reportsAvgSpeed": True,
     "reportsElectricRange": True,

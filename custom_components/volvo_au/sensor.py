@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Callable
 
 from homeassistant.components.sensor import (
@@ -26,14 +26,20 @@ from homeassistant.const import (
     UnitOfTemperature,
     UnitOfTime,
 )
-from homeassistant.core import HomeAssistant
+import voluptuous as vol
+from homeassistant.core import HomeAssistant, ServiceResponse, SupportsResponse
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity, async_gate_unsupported
+from . import journal
 from .online import car_status, status_text
+from .volvo_api import VolvoApiError
 from .powertrain import flatten_attributes, build_week, drivetrain_type, engine_type, structure_week, tyre_pressure_kpa
 from .powertrain import battery_capacity_kwh as car_battery_capacity_kwh
 
@@ -321,6 +327,26 @@ async def async_setup_entry(
     async_add_entities(async_gate_unsupported(hass, coordinator, "sensor", [VolvoSensor(coordinator, d) for d in SENSORS]))
     if car_battery_capacity_kwh(coordinator.car_info):
         async_add_entities([VolvoBatteryCapacity(coordinator)])
+    if coordinator.driving_journal:
+        async_add_entities([VolvoLastTrip(coordinator)])
+        platform = entity_platform.async_get_current_platform()
+        platform.async_register_entity_service(
+            "get_trips",
+            {
+                vol.Optional("start"): cv.datetime,
+                vol.Optional("stop"): cv.datetime,
+                vol.Optional("quantity", default=10): vol.All(vol.Coerce(int), vol.Range(min=1, max=200)),
+                vol.Optional("include_coordinates", default=False): cv.boolean,
+            },
+            "async_get_trips",
+            supports_response=SupportsResponse.ONLY,
+        )
+        platform.async_register_entity_service(
+            "get_trips_summary",
+            {vol.Optional("start"): cv.datetime, vol.Optional("stop"): cv.datetime},
+            "async_get_trips_summary",
+            supports_response=SupportsResponse.ONLY,
+        )
     async_add_entities([VolvoLocationAddress(coordinator), VolvoSoftwareVersion(coordinator), VolvoVin(coordinator), VolvoVehicleInfo(coordinator), VolvoLastSeen(coordinator), VolvoConnection(coordinator)])
 
 
@@ -662,3 +688,54 @@ class VolvoLastSeen(VolvoEntity, SensorEntity):
     @property
     def native_value(self) -> datetime | None:
         return car_status(self.coordinator.data).last_seen
+
+
+class VolvoLastTrip(VolvoEntity, SensorEntity):
+    """The newest trip in the Volvo driving journal. The state is when it ended; the rest are attributes."""
+
+    _attr_translation_key = "last_trip"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_icon = "mdi:map-marker-path"
+
+    def __init__(self, coordinator: VolvoCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_last_trip"
+
+    def _trip(self) -> dict[str, Any] | None:
+        trip = (self.coordinator.data or {}).get("last_trip")
+        return trip if isinstance(trip, dict) and "_error" not in trip else None
+
+    @property
+    def native_value(self) -> datetime | None:
+        end = (self._trip() or {}).get("end_time")
+        return datetime.fromisoformat(end) if end else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        trip = self._trip()
+        if not trip:
+            return None
+        attrs = {k: v for k, v in trip.items() if k not in ("start_place", "end_place", "end_time") and v is not None}
+        attrs["start_place"] = journal.place_text(trip.get("start_place"))
+        attrs["end_place"] = journal.place_text(trip.get("end_place"))
+        return {k: v for k, v in attrs.items() if v is not None}
+
+    async def async_get_trips(
+        self, start: datetime | None = None, stop: datetime | None = None, quantity: int = 10,
+        include_coordinates: bool = False,
+    ) -> ServiceResponse:
+        try:
+            trips = await self.coordinator.client.get_trips(
+                quantity=quantity, start=start, stop=stop, with_coordinates=include_coordinates
+            )
+        except VolvoApiError as err:
+            raise HomeAssistantError(f"Volvo did not return trips: {err}") from err
+        return {"trips": trips}
+
+    async def async_get_trips_summary(self, start: datetime | None = None, stop: datetime | None = None) -> ServiceResponse:
+        stop = stop or datetime.now(UTC)
+        start = start or stop - timedelta(days=30)
+        try:
+            return await self.coordinator.client.get_trips_summary(start, stop)
+        except VolvoApiError as err:
+            raise HomeAssistantError(f"Volvo did not return the trip summary: {err}") from err

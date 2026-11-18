@@ -61,13 +61,15 @@
           "idle_interval": "Idle poll interval (seconds)",
           "active_interval": "Active poll interval (seconds)",
           "registration_plate": "Registration plate (optional)",
-          "live_updates": "Live updates (experimental)"
+          "live_updates": "Live updates (experimental)",
+          "driving_journal": "Driving journal (trips)"
         },
         "data_description": {
           "registration_plate": "Shown in the device name. Volvo normally supplies this itself; only fill it in to override it. Leave blank to use the plate Volvo reports.",
           "idle_interval": "Default 300 (5 minutes). Between 60 and 86400.",
           "active_interval": "Default 60 (1 minute). Between 10 and 3600. Never slower than the idle interval.",
-          "live_updates": "Keep a connection open to Volvo so changes arrive as they happen, as the Polestar integration does. If Volvo only ever sends one reading for a service, that service falls back to polling by itself. Look for 'live updates work' in the log to confirm."
+          "live_updates": "Keep a connection open to Volvo so changes arrive as they happen, as the Polestar integration does. If Volvo only ever sends one reading for a service, that service falls back to polling by itself. Look for 'live updates work' in the log to confirm.",
+          "driving_journal": "Read your trips from the Volvo driving journal: adds a Last trip sensor and the get_trips and get_trips_summary services. Off by default because trips include where you drove. The journal must be turned on in the Volvo app."
         },
         "description": "How often to ask Volvo for updates. Idle is used while the car is quiet (parked, even if plugged in); Active while it is charging, in use, has something open or unlocked, or the climate is running. A command or the end of a trip always triggers fast checks for a minute or so."
       }
@@ -271,6 +273,9 @@
       "last_seen": {
         "name": "Last seen"
       },
+      "last_trip": {
+        "name": "Last trip"
+      },
       "location_address": {
         "name": "Location address"
       },
@@ -337,6 +342,44 @@
       },
       "charge_schedule_stop": {
         "name": "Charge schedule stop"
+      }
+    }
+  },
+  "services": {
+    "get_trips": {
+      "name": "Get trips",
+      "description": "Returns trips from the Volvo driving journal, newest first.",
+      "fields": {
+        "start": {
+          "name": "From",
+          "description": "Only trips that started after this time."
+        },
+        "stop": {
+          "name": "To",
+          "description": "Only trips that started before this time."
+        },
+        "quantity": {
+          "name": "Number of trips",
+          "description": "The most trips to return (default 10)."
+        },
+        "include_coordinates": {
+          "name": "Include coordinates",
+          "description": "Also return the start and end latitude and longitude."
+        }
+      }
+    },
+    "get_trips_summary": {
+      "name": "Get trips summary",
+      "description": "Returns totals over a period: trips, distance, time, energy and electricity cost.",
+      "fields": {
+        "start": {
+          "name": "From",
+          "description": "Start of the period (default 30 days ago)."
+        },
+        "stop": {
+          "name": "To",
+          "description": "End of the period (default now)."
+        }
       }
     }
   }

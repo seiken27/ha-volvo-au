@@ -20,6 +20,7 @@ import logging
 import struct
 import time
 import uuid
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlencode, urlparse
 
@@ -29,6 +30,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
 
+from . import journal
 from .polltiers import SlowTiers
 from .const import (
     API_BASE,
@@ -387,6 +389,10 @@ class VolvoClient:
         app_installation_id: str = DEFAULT_APP_INSTALLATION_ID,
     ) -> None:
         self._tiers = SlowTiers()
+        self.supports_journal = True  # the coordinator turns this off for cars without a driving journal
+        self._last_trip: dict[str, Any] | None = None
+        self._last_trip_at = 0.0
+        self._trip_expect_until = 0.0
         self._session = session
         self.vin = vin
         self._dpop_key = load_dpop_key(dpop_key_pem)
@@ -485,9 +491,11 @@ class VolvoClient:
             "App-Installation-Id": self._app_installation_id,
         }
 
-    async def _json_get(self, path: str) -> Any:
+    async def _json_get(self, path: str, *, with_vin: bool = False) -> Any:
         headers = await self._auth_headers()
         headers["Accept"] = "application/json"
+        if with_vin:
+            headers["vin"] = self.vin
         async with self._session.get(API_BASE + path, headers=headers) as r:
             if r.status != 200:
                 raise VolvoApiError(f"GET {path}: {r.status} {await r.text()}")
@@ -1165,6 +1173,50 @@ class VolvoClient:
             self._chronos_body(),
         )
 
+    # ----- driving journal (trips) -----
+
+    def expect_new_trip(self) -> None:
+        """A trip just ended: look for it in the journal every 30 s for a while, not every 15 minutes."""
+        self._trip_expect_until = time.monotonic() + 1200
+
+    async def get_trips(
+        self, *, quantity: int | None = None, start: datetime | None = None, stop: datetime | None = None,
+        with_coordinates: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Trips from the journal, newest first. Raises VolvoApiError when the journal is not available."""
+        params: dict[str, Any] = {}
+        if quantity:
+            params["quantity"] = quantity
+        if start:
+            params["startDate"] = journal.iso_utc(start)
+        if stop:
+            params["stopDate"] = journal.iso_utc(stop)
+        path = journal.TRIPS_PATH.format(vin=self.vin) + (f"?{urlencode(params)}" if params else "")
+        return journal.parse_trips(await self._json_get(path, with_vin=True), with_coordinates=with_coordinates)
+
+    async def get_last_trip(self) -> dict[str, Any] | None:
+        """The newest trip, cached: every 15 minutes, or every 30 s while a just-ended trip is awaited."""
+        if not self.supports_journal:
+            return None
+        now = time.monotonic()
+        wait = 30.0 if now < self._trip_expect_until else 900.0
+        if self._last_trip_at and now - self._last_trip_at < wait:
+            return self._last_trip
+        trips = await self.get_trips(quantity=1)
+        trip = trips[0] if trips else None
+        if trip and self._last_trip and trip["id"] != self._last_trip["id"]:
+            self._trip_expect_until = 0.0  # the new trip arrived
+        self._last_trip, self._last_trip_at = trip or self._last_trip, now
+        return self._last_trip
+
+    async def get_trips_summary(self, start: datetime, stop: datetime) -> dict[str, Any]:
+        """Totals (count, distance, time, energy, cost) over a time range."""
+        body = journal.summary_request(self.vin, int(start.timestamp() * 1000), int(stop.timestamp() * 1000))
+        res = await self._grpc_post(journal.SUMMARY_PATH, body)
+        if not res.get("ok") or not res.get("frames"):
+            raise VolvoApiError(f"trip summary failed: {res.get('grpc_message') or res.get('error') or res.get('http_status')}")
+        return journal.parse_summary(bytes.fromhex(res["frames"][0]))
+
     async def snapshot(self) -> dict[str, Any]:
         """Pull everything in parallel-ish (sequential is fine; ~1s total)."""
         out: dict[str, Any] = {}
@@ -1182,6 +1234,7 @@ class VolvoClient:
             "global_charge_timer": self.get_global_charge_timer,
             "software_info": self.get_software_info,
             "weather": self.get_weather_report,
+            "last_trip": self.get_last_trip,
         }
         # Slow readers are served from cache until their tier is due (see polltiers.py).
         due = {n: fn for n, fn in readers.items() if not (self._tiers.is_slow(n) and self._tiers.cached(n)[0])}

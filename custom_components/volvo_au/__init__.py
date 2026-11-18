@@ -17,6 +17,7 @@ from .const import (
     CONF_REFRESH_TOKEN,
     CONF_ACTIVE_INTERVAL,
     CONF_IDLE_INTERVAL,
+    CONF_DRIVING_JOURNAL,
     CONF_LIVE_UPDATES,
     CONF_REGISTRATION_PLATE,
     CONF_VIN,
@@ -87,6 +88,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         idle_interval=entry.options.get(CONF_IDLE_INTERVAL, POLL_IDLE),
         active_interval=entry.options.get(CONF_ACTIVE_INTERVAL, POLL_ACTIVE),
         live_updates=entry.options.get(CONF_LIVE_UPDATES, True),
+        driving_journal=entry.options.get(CONF_DRIVING_JOURNAL, False),
     )
     await coordinator.async_config_entry_first_refresh()
 

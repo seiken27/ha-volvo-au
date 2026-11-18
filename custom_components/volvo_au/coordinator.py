@@ -27,6 +27,7 @@ from .const import (
 )
 from .livestream import STREAMS, StreamPolicy
 from .polltiers import is_active
+from .powertrain import capability
 from .volvo_api import VolvoApiError, VolvoAuthError, VolvoClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -65,6 +66,7 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         idle_interval: int = POLL_IDLE,
         active_interval: int = POLL_ACTIVE,
         live_updates: bool = True,
+        driving_journal: bool = False,
     ) -> None:
         super().__init__(
             hass,
@@ -74,6 +76,9 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self._idle_interval = idle_interval
         self._live_updates = live_updates
+        # Opt in (options). Needs a car whose own record says it has a journal (None = not stated, so try).
+        self.driving_journal = driving_journal and capability(car_info, "supportsDrivingJournal") is not False
+        client.supports_journal = self.driving_journal
         self._stream_tasks: dict[str, asyncio.Task[None]] = {}
         self.stream_policies: dict[str, StreamPolicy] = {}
         # The active poll is never slower than the idle one.
@@ -143,6 +148,7 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if self._prev_in_use and not in_use:
                 # Just stopped using the car. Start 5-min burst.
                 self._post_trip_until = now + 300
+                self.client.expect_new_trip()
                 _LOGGER.debug("end-of-trip detected; starting 5min lock burst")
             self._prev_in_use = in_use
         except Exception:  # noqa: BLE001

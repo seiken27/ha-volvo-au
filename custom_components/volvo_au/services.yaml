@@ -1,0 +1,41 @@
+get_trips:
+  target:
+    entity:
+      integration: volvo_au
+      domain: sensor
+  fields:
+    start:
+      required: false
+      selector:
+        datetime:
+    stop:
+      required: false
+      selector:
+        datetime:
+    quantity:
+      required: false
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 200
+          mode: box
+    include_coordinates:
+      required: false
+      default: false
+      selector:
+        boolean:
+get_trips_summary:
+  target:
+    entity:
+      integration: volvo_au
+      domain: sensor
+  fields:
+    start:
+      required: false
+      selector:
+        datetime:
+    stop:
+      required: false
+      selector:
+        datetime:
