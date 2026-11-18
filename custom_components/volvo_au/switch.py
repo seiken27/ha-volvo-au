@@ -8,12 +8,14 @@ from typing import Any
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity, async_gate_unsupported
+from .binary_sensor import _connected
 from .button import raise_if_command_failed
 from .online import ensure_car_online
 from .powertrain import climate_action
@@ -63,6 +65,8 @@ class VolvoChargingSwitch(VolvoEntity, SwitchEntity):
         return status.startswith("CHARGING_STATUS_CHARGING")
 
     async def async_turn_on(self, **kwargs: Any) -> None:
+        if _connected(self.coordinator.data or {}) is False:
+            raise HomeAssistantError("The car is not plugged in, so it cannot start charging. Nothing was sent.")
         await self._send("charge_start", "Start charging")
 
     async def async_turn_off(self, **kwargs: Any) -> None:

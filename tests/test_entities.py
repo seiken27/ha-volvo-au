@@ -1,5 +1,6 @@
 """Entity tables and gating, run against stubbed Home Assistant (see ha_stubs.py)."""
 
+import asyncio
 import types
 from types import SimpleNamespace
 
@@ -218,3 +219,15 @@ def test_duplicates_are_gone_and_their_registry_entries_cleaned(monkeypatch):
 
     volvo.entity.async_remove_registered_entities(None, "sensor", ["u", "missing"])
     assert registry.removed == ["sensor.old"]
+
+
+# ---- charging ---------------------------------------------------------------------------------------------------
+
+
+def test_start_charging_is_refused_when_not_plugged_in(volvo):
+    switch = volvo.switch.VolvoChargingSwitch.__new__(volvo.switch.VolvoChargingSwitch)
+    switch.coordinator = SimpleNamespace(
+        data={"battery": {"battery": {"chargerConnectionStatus": "CHARGER_CONNECTION_STATUS_DISCONNECTED"}}}
+    )
+    with pytest.raises(Exception, match="not plugged in"):
+        asyncio.run(switch.async_turn_on())

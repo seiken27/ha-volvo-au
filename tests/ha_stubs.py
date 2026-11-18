@@ -115,6 +115,7 @@ def _install(monkeypatch: Any) -> None:
     for name in names:
         monkeypatch.setitem(sys.modules, name, _AnyModule(name))
     sys.modules["homeassistant.core"].callback = lambda func: func
+    sys.modules["homeassistant.exceptions"].HomeAssistantError = type("HomeAssistantError", (Exception,), {})
     sys.modules["homeassistant.helpers.entity"].EntityCategory = EntityCategory
     sys.modules["homeassistant.helpers.entity_registry"].RegistryEntryDisabler = RegistryEntryDisabler
     sys.modules["homeassistant.helpers.update_coordinator"].CoordinatorEntity = FakeCoordinatorEntity
