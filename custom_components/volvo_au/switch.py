@@ -160,7 +160,9 @@ class VolvoClimatizationSwitch(VolvoEntity, SwitchEntity):
     async def async_turn_on(self, **kwargs: Any) -> None:
         ensure_car_online(self.coordinator)
         _LOGGER.debug("ClimatizationStart")
-        res = await self.coordinator.client.climatization_start()
+        res = await self.coordinator.client.climatization_start(
+            self.coordinator.climate_temperature, dict(self.coordinator.climate_seats) or None
+        )
         if not res.get("ok"):
             _LOGGER.warning("ClimatizationStart failed: %s", res)
         self.coordinator.note_command()

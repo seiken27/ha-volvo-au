@@ -30,7 +30,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
 
-from . import journal
+from . import climate, journal
 from .polltiers import SlowTiers
 from .const import (
     API_BASE,
@@ -978,12 +978,14 @@ class VolvoClient:
             "/invocation.InvocationService/Unlock", body
         )
 
-    async def climatization_start(self) -> dict[str, Any]:
-        """Start parking climatization (default ~5min runtime)."""
-        # Payload: Outer{ Inner{1=vin}, mode=2 varint = 1 }
-        inner = self._pb_len_delim(1, self.vin.encode("ascii"))
-        outer = self._pb_len_delim(1, inner) + b"\x10\x01"  # f2 varint 1
-        body = self._grpc_frame(outer)
+    async def climatization_start(
+        self, temperature: float | None = None, seats: dict[str, str] | None = None
+    ) -> dict[str, Any]:
+        """Start parking climatization (default ~5min runtime).
+
+        ``temperature`` and ``seats`` (see climate.py) are only sent for cars that support those settings.
+        """
+        body = self._grpc_frame(climate.start_message(self.vin, temperature, seats))
         return await self._grpc_post(
             "/invocation.InvocationService/ClimatizationStart", body
         )

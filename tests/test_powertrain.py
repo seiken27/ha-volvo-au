@@ -123,6 +123,8 @@ def _gated_keys():
     keys = set()
     for path in root.glob("*.py"):
         keys |= set(re.findall(r'"((?:supports|reports)[A-Za-z]+)"', path.read_text()))
+    # The climate settings flags are opt-in (shown only when true), not hidden when false.
+    keys = {k for k in keys if not k.startswith("supportsParkingClimatization") or k == "supportsParkingClimatization"}
     return keys - {"supportsEngineRemoteStart", "supportsEngineStart"}
 
 

@@ -214,8 +214,58 @@
       "charge_current_limit": {
         "name": "Charge current limit"
       },
+      "climate_temperature": {
+        "name": "Climate temperature"
+      },
       "target_soc": {
         "name": "Target SoC"
+      }
+    },
+    "select": {
+      "front_left_seat": {
+        "name": "Front left seat heating",
+        "state": {
+          "off": "Off",
+          "level1": "Level 1",
+          "level2": "Level 2",
+          "level3": "Level 3"
+        }
+      },
+      "front_right_seat": {
+        "name": "Front right seat heating",
+        "state": {
+          "off": "Off",
+          "level1": "Level 1",
+          "level2": "Level 2",
+          "level3": "Level 3"
+        }
+      },
+      "rear_left_seat": {
+        "name": "Rear left seat heating",
+        "state": {
+          "off": "Off",
+          "level1": "Level 1",
+          "level2": "Level 2",
+          "level3": "Level 3"
+        }
+      },
+      "rear_right_seat": {
+        "name": "Rear right seat heating",
+        "state": {
+          "off": "Off",
+          "level1": "Level 1",
+          "level2": "Level 2",
+          "level3": "Level 3"
+        }
+      },
+      "steering_wheel": {
+        "name": "Steering wheel heating",
+        "state": {
+          "off": "Off",
+          "level1": "Level 1",
+          "level2": "Level 2",
+          "level3": "Level 3"
+        }
       }
     },
     "sensor": {

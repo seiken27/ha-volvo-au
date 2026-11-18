@@ -94,6 +94,9 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_command_at: float = 0.0
         self._post_trip_until: float = 0.0
         self._prev_in_use: bool | None = None
+        # Parking climate choices (temperature, seat and steering wheel heating), set by the number/select entities.
+        self.climate_temperature: float | None = None
+        self.climate_seats: dict[str, str] = {}
 
     def note_command(self) -> None:
         """Call right after a Lock/Unlock so we re-poll fast for a minute."""

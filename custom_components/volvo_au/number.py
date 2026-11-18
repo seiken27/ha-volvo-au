@@ -13,8 +13,10 @@ from homeassistant.components.number import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, UnitOfElectricCurrent
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from . import climate
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .button import raise_if_command_failed
@@ -30,11 +32,11 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        async_gate_unsupported(
-            hass, coordinator, "number", [VolvoChargeCurrentLimit(coordinator), VolvoTargetSoc(coordinator)]
-        )
-    )
+    entities: list[VolvoEntity] = [VolvoChargeCurrentLimit(coordinator), VolvoTargetSoc(coordinator)]
+    # Experimental: only for cars whose own record says they take a parking climate temperature (not the XC40/EX40).
+    if climate.supported(coordinator.car_info, climate.TEMPERATURE_FLAG):
+        entities.append(VolvoClimateTemperature(coordinator))
+    async_add_entities(async_gate_unsupported(hass, coordinator, "number", entities))
 
 
 class VolvoChargeCurrentLimit(VolvoEntity, NumberEntity):
@@ -114,3 +116,40 @@ class VolvoTargetSoc(VolvoEntity, NumberEntity):
             _LOGGER.warning("SetTargetSoc failed: %s", res)
         self.coordinator.note_command()
         raise_if_command_failed(res, f"Charge limit {level} %")
+
+
+class VolvoClimateTemperature(VolvoEntity, NumberEntity, RestoreEntity):
+    """Temperature to use the next time climatization is started (EXPERIMENTAL, untested on a real car)."""
+
+    _attr_translation_key = "climate_temperature"
+    _attr_icon = "mdi:thermometer"
+    _attr_native_unit_of_measurement = "\u00b0C"
+    _attr_native_step = 0.5
+    _attr_mode = NumberMode.BOX
+
+    def __init__(self, coordinator: VolvoCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_climate_temperature"
+        low, high = climate.temperature_limits(coordinator.car_info)
+        self._attr_native_min_value = low
+        self._attr_native_max_value = high
+        self._value = min(max(climate.DEFAULT_TEMPERATURE, low), high)
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last is not None:
+            try:
+                self._value = min(max(float(last.state), self._attr_native_min_value), self._attr_native_max_value)
+            except (TypeError, ValueError):
+                pass
+        self.coordinator.climate_temperature = self._value
+
+    @property
+    def native_value(self) -> float:
+        return self._value
+
+    async def async_set_native_value(self, value: float) -> None:
+        self._value = float(value)
+        self.coordinator.climate_temperature = self._value
+        self.async_write_ha_state()

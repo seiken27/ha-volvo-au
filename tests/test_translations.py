@@ -13,6 +13,8 @@ def test_translation_files_agree_and_every_key_is_used():
     assert strings == shipped
     for platform, entries in strings["entity"].items():
         source = (ROOT / f"{platform}.py").read_text()
+        if platform == "select":  # the seat names are keys of the table in climate.py
+            source += (ROOT / "climate.py").read_text()
         for key, value in entries.items():
             assert value["name"], (platform, key)
             used = f'"{key}"' in source or key.startswith(("tyre_", "charge_schedule_"))
