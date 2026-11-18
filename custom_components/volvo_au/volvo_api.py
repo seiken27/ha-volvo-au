@@ -29,6 +29,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
 
+from .polltiers import SlowTiers
 from .const import (
     API_BASE,
     COMMAND_TIMEOUT_S,
@@ -382,6 +383,7 @@ class VolvoClient:
         refresh_token: str,
         app_installation_id: str = DEFAULT_APP_INSTALLATION_ID,
     ) -> None:
+        self._tiers = SlowTiers()
         self._session = session
         self.vin = vin
         self._dpop_key = load_dpop_key(dpop_key_pem)
@@ -1054,9 +1056,12 @@ class VolvoClient:
         """Set the AC charge current limit (6–32 A)."""
         if not 1 <= amps <= 100:
             raise ValueError(f"amps out of range: {amps}")
-        return await self._chronos_set_int_grpc(
-            "/chronos.services.v1.AmpLimitService/SetAmpLimit", amps
-        )
+        try:
+            return await self._chronos_set_int_grpc(
+                "/chronos.services.v1.AmpLimitService/SetAmpLimit", amps
+            )
+        finally:
+            self._tiers.invalidate("amp_limit")
 
     async def set_target_soc(self, level: int) -> dict[str, Any]:
         """Set the charge target state-of-charge (1-100%).
@@ -1069,9 +1074,12 @@ class VolvoClient:
         """
         if not 1 <= level <= 100:
             raise ValueError(f"target SoC out of range: {level}")
-        return await self._chronos_set_target_soc_grpc(
-            "/chronos.services.v1.TargetSocService/SetTargetSoc", level
-        )
+        try:
+            return await self._chronos_set_target_soc_grpc(
+                "/chronos.services.v1.TargetSocService/SetTargetSoc", level
+            )
+        finally:
+            self._tiers.invalidate("target_soc")
 
     async def set_global_charge_timer(
         self,
@@ -1117,9 +1125,12 @@ class VolvoClient:
         timer = start_pb + end_pb + enabled_pb
         outer = self._pb_len_delim(1, req) + self._pb_len_delim(2, timer)
         body = self._grpc_frame(outer)
-        return await self._grpc_post(
-            "/chronos.services.v2.GlobalChargeTimerService/SetGlobalChargeTimer", body
-        )
+        try:
+            return await self._grpc_post(
+                "/chronos.services.v2.GlobalChargeTimerService/SetGlobalChargeTimer", body
+            )
+        finally:
+            self._tiers.invalidate("global_charge_timer")
 
     async def get_global_charge_timer(self) -> dict[str, Any]:
         return await self._ndjson_first_frame(
@@ -1145,10 +1156,22 @@ class VolvoClient:
             "software_info": self.get_software_info,
             "weather": self.get_weather_report,
         }
+        # Slow readers are served from cache until their tier is due (see polltiers.py).
+        due = {n: fn for n, fn in readers.items() if not (self._tiers.is_slow(n) and self._tiers.cached(n)[0])}
         # Run concurrently — gateway handles parallel requests fine
-        results = await asyncio.gather(
-            *(fn() for fn in readers.values()), return_exceptions=True
-        )
+        fetched = dict(zip(due.keys(), await asyncio.gather(*(fn() for fn in due.values()), return_exceptions=True)))
+        results = []
+        for name in readers:
+            if name in fetched:
+                res = fetched[name]
+                if self._tiers.is_slow(name):
+                    if res is not None and not isinstance(res, Exception):
+                        self._tiers.put(name, res)
+                    elif self._tiers.has(name) and not isinstance(res, VolvoAuthError):
+                        res = self._tiers.cached(name)[1]  # keep the stale value rather than an error
+            else:
+                res = self._tiers.cached(name)[1]
+            results.append(res)
         # A dead/revoked refresh token fails identically for every reader
         # (each independently calls _ensure_access_token() -> _refresh()).
         # Without this check that gets buried as 13 separate per-field
