@@ -20,7 +20,7 @@ import logging
 import struct
 import time
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlencode, urlparse
 
@@ -393,6 +393,10 @@ class VolvoClient:
         self._last_trip: dict[str, Any] | None = None
         self._last_trip_at = 0.0
         self._trip_expect_until = 0.0
+        self.local_now = lambda: datetime.now(UTC)  # the coordinator swaps in Home Assistant's local time
+        self._month: dict[str, Any] | None = None
+        self._month_key: tuple[Any, ...] | None = None
+        self._month_at = 0.0
         self._session = session
         self.vin = vin
         self._dpop_key = load_dpop_key(dpop_key_pem)
@@ -1209,6 +1213,21 @@ class VolvoClient:
         self._last_trip, self._last_trip_at = trip or self._last_trip, now
         return self._last_trip
 
+    async def get_trips_month(self) -> dict[str, Any] | None:
+        """Totals since the start of this month, cached 15 minutes (and re-read when a new trip arrives or the month turns)."""
+        if not self.supports_journal:
+            return None
+        now = self.local_now()
+        start = journal.month_start(now)
+        key = (start, (self._last_trip or {}).get("id"))
+        mono = time.monotonic()
+        if self._month is not None and key == self._month_key and mono - self._month_at < 900:
+            return self._month
+        summary = await self.get_trips_summary(start, now)
+        summary["month_start"] = start.isoformat()
+        self._month, self._month_key, self._month_at = summary, key, mono
+        return summary
+
     async def get_trips_summary(self, start: datetime, stop: datetime) -> dict[str, Any]:
         """Totals (count, distance, time, energy, cost) over a time range."""
         body = journal.summary_request(self.vin, int(start.timestamp() * 1000), int(stop.timestamp() * 1000))
@@ -1235,6 +1254,7 @@ class VolvoClient:
             "software_info": self.get_software_info,
             "weather": self.get_weather_report,
             "last_trip": self.get_last_trip,
+            "trips_month": self.get_trips_month,
         }
         # Slow readers are served from cache until their tier is due (see polltiers.py).
         due = {n: fn for n, fn in readers.items() if not (self._tiers.is_slow(n) and self._tiers.cached(n)[0])}

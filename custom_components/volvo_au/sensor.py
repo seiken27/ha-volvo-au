@@ -328,7 +328,7 @@ async def async_setup_entry(
     if car_battery_capacity_kwh(coordinator.car_info):
         async_add_entities([VolvoBatteryCapacity(coordinator)])
     if coordinator.driving_journal:
-        async_add_entities([VolvoLastTrip(coordinator)])
+        async_add_entities([VolvoLastTrip(coordinator), VolvoTripsThisMonth(coordinator), VolvoDistanceThisMonth(coordinator)])
         platform = entity_platform.async_get_current_platform()
         platform.async_register_entity_service(
             "get_trips",
@@ -741,3 +741,45 @@ class VolvoLastTrip(VolvoEntity, SensorEntity):
             return await self.coordinator.client.get_trips_summary(start, stop)
         except VolvoApiError as err:
             raise HomeAssistantError(f"Volvo did not return the trip summary: {err}") from err
+
+
+class _VolvoMonthTotal(VolvoEntity, SensorEntity):
+    """A total over the current calendar month from the driving journal; HA's statistics restart it each month."""
+
+    _attr_state_class = SensorStateClass.TOTAL
+    _field = ""
+    _key = ""
+
+    def __init__(self, coordinator: VolvoCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_{self._key}"
+
+    def _month(self) -> dict[str, Any] | None:
+        month = (self.coordinator.data or {}).get("trips_month")
+        return month if isinstance(month, dict) and "_error" not in month else None
+
+    @property
+    def native_value(self) -> float | int | None:
+        month = self._month()
+        return month.get(self._field) if month else None
+
+    @property
+    def last_reset(self) -> datetime | None:
+        month = self._month()
+        return datetime.fromisoformat(month["month_start"]) if month else None
+
+
+class VolvoTripsThisMonth(_VolvoMonthTotal):
+    _attr_translation_key = "trips_this_month"
+    _attr_icon = "mdi:car-clock"
+    _field = "trip_count"
+    _key = "trips_this_month"
+
+
+class VolvoDistanceThisMonth(_VolvoMonthTotal):
+    _attr_translation_key = "distance_this_month"
+    _attr_device_class = SensorDeviceClass.DISTANCE
+    _attr_native_unit_of_measurement = UnitOfLength.KILOMETERS
+    _attr_suggested_display_precision = 1
+    _field = "distance_km"
+    _key = "distance_this_month"

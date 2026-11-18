@@ -21,6 +21,11 @@ SUMMARY_PATH = "/tripmanager.publicapi.mobile.v1.TripManagerMobileService/GetTri
 TRIPS_PATH = "/journallog-trip-api/vehicles/{vin}/trips"
 
 
+def month_start(now: datetime) -> datetime:
+    """Midnight on the first day of ``now``'s month, in the same time zone."""
+    return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
 def iso_utc(moment: datetime) -> str:
     return moment.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 

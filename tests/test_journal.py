@@ -64,3 +64,11 @@ def test_parse_summary():
     assert s["trip_count"] == 336 and s["distance_km"] == 3556.0 and s["duration_h"] == 76.7
     assert s["energy_used_kwh"] == 679.1 and s["average_consumption_kwh_100km"] == 19.1
     assert s["electricity_cost"] == {"currency": "AUD", "amount": 259.33}
+
+
+def test_month_start():
+    from datetime import timedelta, timezone
+
+    tz = timezone(timedelta(hours=11))
+    assert journal.month_start(datetime(2026, 11, 19, 14, 30, 5, 99, tzinfo=tz)) == datetime(2026, 11, 1, tzinfo=tz)
+    assert journal.month_start(datetime(2026, 12, 1, 0, 0, tzinfo=UTC)) == datetime(2026, 12, 1, tzinfo=UTC)

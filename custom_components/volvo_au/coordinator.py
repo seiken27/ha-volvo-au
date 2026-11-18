@@ -16,6 +16,7 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.util import dt as dt_util
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
@@ -79,6 +80,7 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Opt in (options). Needs a car whose own record says it has a journal (None = not stated, so try).
         self.driving_journal = driving_journal and capability(car_info, "supportsDrivingJournal") is not False
         client.supports_journal = self.driving_journal
+        client.local_now = dt_util.now
         self._stream_tasks: dict[str, asyncio.Task[None]] = {}
         self.stream_policies: dict[str, StreamPolicy] = {}
         # The active poll is never slower than the idle one.

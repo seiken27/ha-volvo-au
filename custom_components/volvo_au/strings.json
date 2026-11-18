@@ -261,6 +261,9 @@
       "days_to_service": {
         "name": "Days to service"
       },
+      "distance_this_month": {
+        "name": "Distance this month"
+      },
       "distance_to_service": {
         "name": "Distance to service"
       },
@@ -299,6 +302,9 @@
       },
       "trip_manual_km": {
         "name": "Trip (manual)"
+      },
+      "trips_this_month": {
+        "name": "Trips this month"
       },
       "tyre_front_left_pressure": {
         "name": "Tyre front-left pressure"
