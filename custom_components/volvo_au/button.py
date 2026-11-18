@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
-from .entity import VolvoEntity, async_gate_combustion_only
+from .entity import VolvoEntity, async_gate_unsupported
 from .online import ensure_car_online
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ async def async_setup_entry(
         VolvoRefreshButton(coordinator),
         *(VolvoCommandButton(coordinator, spec) for spec in COMMAND_BUTTONS),
     ]
-    async_add_entities(async_gate_combustion_only(hass, coordinator, "button", buttons))
+    async_add_entities(async_gate_unsupported(hass, coordinator, "button", buttons))
 
 
 class VolvoRefreshButton(VolvoEntity, ButtonEntity):
@@ -58,6 +58,20 @@ COMMAND_BUTTONS: list[tuple[str, str, str, str, str, dict[str, Any]]] = [
     ("tailgate_control", "Tailgate control", "mdi:truck-tailgate", "Open tailgate", "tailgate_control", {"open": True}),
     ("tailgate_close", "Close tailgate", "mdi:truck-tailgate-closed", "Close tailgate", "tailgate_control", {"open": False}),
 ]
+
+
+# Which of the car's own flags each command needs (the suffixes above).
+BUTTON_CAPABILITIES = {
+    "flash": "supportsFlash",
+    "honk_flash": "supportsHonkAndFlash",
+    "window_open": "supportsRemoteWindowControl",
+    "window_close": "supportsRemoteWindowControl",
+    "charge_start": "supportsChargingFunctions",
+    "charge_stop": "supportsChargingFunctions",
+    "reduced_alarm": "supportsLockReducedGuard",
+    "tailgate_control": "supportsRemoteTrunkControl",
+    "tailgate_close": "supportsRemoteTrunkControl",
+}
 
 
 def raise_if_command_failed(res: dict[str, Any], what: str) -> None:
@@ -89,6 +103,7 @@ class VolvoCommandButton(VolvoEntity, ButtonEntity):
         self._attr_icon = icon
         self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_{suffix}"
         self.requires_combustion_engine = self.requires_engine_remote_start = suffix == "engine_remote_start"
+        self.requires_capability = BUTTON_CAPABILITIES.get(suffix)
 
     async def async_press(self) -> None:
         ensure_car_online(self.coordinator)  # raises when the car is known offline; nothing is sent

@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
-from .entity import VolvoEntity
+from .entity import VolvoEntity, async_gate_unsupported
 from .online import ensure_car_online
 
 _LOGGER = logging.getLogger(__name__)
@@ -38,11 +38,14 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([VolvoLock(coordinator), VolvoTailgateLock(coordinator)])
+    async_add_entities(
+        async_gate_unsupported(hass, coordinator, "lock", [VolvoLock(coordinator), VolvoTailgateLock(coordinator)])
+    )
 
 
 class VolvoLock(VolvoEntity, LockEntity):
     _attr_name = "Lock"
+    requires_capability = "supportsLock"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
         super().__init__(coordinator)
@@ -84,6 +87,7 @@ class VolvoTailgateLock(VolvoEntity, LockEntity):
     """Tailgate lock: unlock pops the tailgate, lock re-locks the whole car."""
 
     _attr_name = "Tailgate lock"
+    requires_capability = "supportsRemoteTrunkUnlock"
     _attr_icon = "mdi:car-back"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:

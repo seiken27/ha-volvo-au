@@ -9,7 +9,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
-from .powertrain import has_combustion_engine, supports_engine_remote_start
+from .powertrain import capability, has_combustion_engine, supports_engine_remote_start
 
 
 class VolvoEntity(CoordinatorEntity[VolvoCoordinator]):
@@ -20,6 +20,9 @@ class VolvoEntity(CoordinatorEntity[VolvoCoordinator]):
     requires_combustion_engine = False
     # True for entities that need the car's own "supports engine remote start" flag.
     requires_engine_remote_start = False
+    # Name of a flag in the car's own record (``supportsFlash``, ``reportsTyrePressure``, ...). The entity is
+    # hidden when the car says that flag is false.
+    requires_capability: str | None = None
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
         super().__init__(coordinator)
@@ -54,27 +57,40 @@ class VolvoEntity(CoordinatorEntity[VolvoCoordinator]):
         )
 
 
+def _is_gated(entity: VolvoEntity) -> bool:
+    return bool(
+        entity.requires_combustion_engine or entity.requires_engine_remote_start or entity.requires_capability
+    )
+
+
+def _is_unsupported(entity: VolvoEntity, car: dict | None) -> bool:
+    """True only when the car's own record says this entity's feature is not there."""
+    if entity.requires_combustion_engine and has_combustion_engine(car) is False:
+        return True
+    if entity.requires_engine_remote_start and supports_engine_remote_start(car) is False:
+        return True
+    return bool(entity.requires_capability) and capability(car, entity.requires_capability) is False
+
+
 @callback
-def async_gate_combustion_only(
+def async_gate_unsupported(
     hass: HomeAssistant, coordinator: VolvoCoordinator, domain: str, entities: list[VolvoEntity]
 ) -> list[VolvoEntity]:
-    """Drop combustion-only entities when the car says it is electric (or says it has no engine remote start).
+    """Drop entities for features the car says it does not have, and disable them in the registry.
 
-    They carry ``disabled_by=INTEGRATION`` and come back by themselves if the car ever reports a
-    combustion engine. Entities the user disabled are left alone. A car that did not say what powers
-    it keeps everything.
+    Uses the car's own record from ``/car-information/car``: an engine type of electric, a ``false``
+    capability flag (for example ``reportsTyrePressure``) or ``supportsEngineRemoteStart: false``.
+    Dropped entities carry ``disabled_by=INTEGRATION`` and come back by themselves if the car later
+    says it supports the feature. Entities the user disabled are left alone. A flag the car does not
+    report, or a record that could not be read, keeps everything.
     """
     registry = er.async_get(hass)
-    electric = has_combustion_engine(coordinator.car_info) is False
-    no_remote_start = supports_engine_remote_start(coordinator.car_info) is False
     kept: list[VolvoEntity] = []
     for entity in entities:
-        if not (entity.requires_combustion_engine or entity.requires_engine_remote_start):
+        if not _is_gated(entity):
             kept.append(entity)
             continue
-        unsupported = (entity.requires_combustion_engine and electric) or (
-            entity.requires_engine_remote_start and no_remote_start
-        )
+        unsupported = _is_unsupported(entity, coordinator.car_info)
         entity_id = registry.async_get_entity_id(domain, DOMAIN, entity.unique_id)
         entry = registry.async_get(entity_id) if entity_id else None
         if not unsupported:

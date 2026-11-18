@@ -30,7 +30,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
-from .entity import VolvoEntity, async_gate_combustion_only
+from .entity import VolvoEntity, async_gate_unsupported
 from .online import car_status, status_text
 from .powertrain import build_week, drivetrain_type, engine_type, structure_week
 from .powertrain import battery_capacity_kwh as car_battery_capacity_kwh
@@ -90,6 +90,7 @@ def _epoch_to_dt(seconds: Any) -> datetime | None:
 class VolvoSensorDescription(SensorEntityDescription):
     value_fn: Callable[[dict[str, Any]], Any]
     requires_combustion_engine: bool = False
+    requires_capability: str | None = None
 
 
 SENSORS: tuple[VolvoSensorDescription, ...] = (
@@ -105,6 +106,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="range_km",
+        requires_capability="reportsElectricRange",
         name="Range",
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         device_class=SensorDeviceClass.DISTANCE,
@@ -165,6 +167,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="avg_consumption",
+        requires_capability="reportsAvgElectricConsumption",
         name="Average consumption",
         native_unit_of_measurement="kWh/100km",
         state_class=SensorStateClass.MEASUREMENT,
@@ -199,6 +202,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="avg_speed",
+        requires_capability="reportsAvgSpeed",
         name="Average speed",
         native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
         device_class=SensorDeviceClass.SPEED,
@@ -208,6 +212,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     # Charge target / amp limit
     VolvoSensorDescription(
         key="target_soc",
+        requires_capability="supportsTargetChargeLevelSetting",
         name="Target SoC",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -215,6 +220,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="amp_limit",
+        requires_capability="supportsChargeAmperageLimitSetting",
         name="Charge current limit",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -268,6 +274,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     # Air purification
     VolvoSensorDescription(
         key="air_quality_index",
+        requires_capability="supportsAirPurificationInternalMeasurement",
         name="Cabin air quality index",
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda s: _path(
@@ -276,6 +283,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="air_purification_last_cycle",
+        requires_capability="supportsAirPurification",
         name="Air purification last cycle",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda s: _epoch_to_dt(
@@ -291,7 +299,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(async_gate_combustion_only(hass, coordinator, "sensor", [VolvoSensor(coordinator, d) for d in SENSORS]))
+    async_add_entities(async_gate_unsupported(hass, coordinator, "sensor", [VolvoSensor(coordinator, d) for d in SENSORS]))
     if car_battery_capacity_kwh(coordinator.car_info):
         async_add_entities([VolvoBatteryCapacity(coordinator)])
     async_add_entities([VolvoLocationAddress(coordinator), VolvoSoftwareVersion(coordinator), VolvoVin(coordinator), VolvoVehicleInfo(coordinator), VolvoLastSeen(coordinator), VolvoConnection(coordinator)])
@@ -308,6 +316,7 @@ class VolvoSensor(VolvoEntity, SensorEntity):
         super().__init__(coordinator)
         self.entity_description = description
         self.requires_combustion_engine = description.requires_combustion_engine
+        self.requires_capability = description.requires_capability
         self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_{description.key}"
 
     @property

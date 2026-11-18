@@ -1,6 +1,7 @@
 """Powertrain facts read from the C3 car record (the module has no Home Assistant imports)."""
 
 import importlib.util
+import re
 from pathlib import Path
 
 import pytest
@@ -84,3 +85,57 @@ def test_engine_remote_start_flag_and_structure_week_edge_cases():
     assert powertrain.supports_engine_remote_start(None) is None
     assert powertrain.structure_week({"structureWeek": 2022}) is None
     assert powertrain.build_week({}) is None
+
+
+# The capability flags every gated entity reads, as the real Australian XC40 reported them (18 Nov 2026).
+# reportsLightWarnings is shortened: only whether it has entries matters.
+XC40_FLAGS = {
+    "reportsAvgElectricConsumption": True,
+    "reportsAvgSpeed": True,
+    "reportsElectricRange": True,
+    "reportsLightWarnings": [
+        "LIGHT_WARNING_BRAKE_LIGHT_LEFT",
+        "LIGHT_WARNING_HIGH_BEAM_LEFT"
+    ],
+    "reportsTyrePressure": False,
+    "supportsAirPurification": True,
+    "supportsAirPurificationInternalMeasurement": True,
+    "supportsChargeAmperageLimitSetting": True,
+    "supportsChargingFunctions": True,
+    "supportsFlash": True,
+    "supportsGlobalChargeTimer": True,
+    "supportsHonkAndFlash": True,
+    "supportsLock": True,
+    "supportsLockReducedGuard": True,
+    "supportsParkingClimatization": True,
+    "supportsRemoteTrunkControl": True,
+    "supportsRemoteTrunkUnlock": True,
+    "supportsRemoteWindowControl": True,
+    "supportsTargetChargeLevelSetting": True
+}
+
+
+def _gated_keys():
+    """Every capability flag named by ``requires_capability`` or the button table in the integration source."""
+    root = Path(__file__).parents[1] / "custom_components" / "volvo_au"
+    keys = set()
+    for path in root.glob("*.py"):
+        keys |= set(re.findall(r'"((?:supports|reports)[A-Za-z]+)"', path.read_text()))
+    return keys - {"supportsEngineRemoteStart", "supportsEngineStart"}
+
+
+def test_capability_reads_flags_lists_and_unknowns():
+    assert powertrain.capability({"supportsFlash": True}, "supportsFlash") is True
+    assert powertrain.capability({"supportsFlash": False}, "supportsFlash") is False
+    assert powertrain.capability({"reportsLightWarnings": ["a"]}, "reportsLightWarnings") is True
+    assert powertrain.capability({"reportsLightWarnings": []}, "reportsLightWarnings") is False
+    assert powertrain.capability({}, "supportsFlash") is None
+    assert powertrain.capability(None, "supportsFlash") is None
+    assert powertrain.capability({"supportsFlash": "yes"}, "supportsFlash") is None
+
+
+def test_only_tyre_pressure_is_hidden_on_the_real_xc40():
+    keys = _gated_keys()
+    assert keys <= set(XC40_FLAGS), f"add these flags to XC40_FLAGS: {sorted(keys - set(XC40_FLAGS))}"
+    hidden = {k for k in keys if powertrain.capability(XC40_FLAGS, k) is False}
+    assert hidden == {"reportsTyrePressure"}

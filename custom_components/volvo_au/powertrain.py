@@ -101,3 +101,18 @@ def build_week(car: dict[str, Any] | None) -> str | None:
     """``202246`` -> ``2022-W46``."""
     week = structure_week(car)
     return f"{week[:4]}-W{week[4:]}" if week else None
+
+
+def capability(car: dict[str, Any] | None, key: str) -> bool | None:
+    """One of the car's own ``supports...`` / ``reports...`` flags.
+
+    ``False`` means the car says it is not supported, ``True`` that it is, and ``None`` that the reply does
+    not say (a missing record, a missing key, or an unexpected value), so callers keep the entity.
+    A list (``reportsLightWarnings``) counts as supported when it has any entries.
+    """
+    value = (car or {}).get(key)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, list):
+        return bool(value)
+    return None

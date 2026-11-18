@@ -12,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
-from .entity import VolvoEntity
+from .entity import VolvoEntity, async_gate_unsupported
 from .online import ensure_car_online
 from .schedule import current_schedule
 
@@ -26,16 +26,22 @@ async def async_setup_entry(
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
-        [
-            VolvoChargeScheduleSwitch(coordinator),
-            VolvoClimatizationSwitch(coordinator),
-            VolvoAirPurificationSwitch(coordinator),
-        ]
+        async_gate_unsupported(
+            hass,
+            coordinator,
+            "switch",
+            [
+                VolvoChargeScheduleSwitch(coordinator),
+                VolvoClimatizationSwitch(coordinator),
+                VolvoAirPurificationSwitch(coordinator),
+            ],
+        )
     )
 
 
 class VolvoChargeScheduleSwitch(VolvoEntity, SwitchEntity):
     _attr_name = "Charge schedule"
+    requires_capability = "supportsGlobalChargeTimer"
     _attr_icon = "mdi:calendar-clock"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
@@ -76,6 +82,7 @@ class VolvoChargeScheduleSwitch(VolvoEntity, SwitchEntity):
 
 class VolvoClimatizationSwitch(VolvoEntity, SwitchEntity):
     _attr_name = "Climatization"
+    requires_capability = "supportsParkingClimatization"
     _attr_icon = "mdi:car-defrost-front"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
@@ -127,6 +134,7 @@ class VolvoClimatizationSwitch(VolvoEntity, SwitchEntity):
 
 class VolvoAirPurificationSwitch(VolvoEntity, SwitchEntity):
     _attr_name = "Air purification"
+    requires_capability = "supportsAirPurification"
     _attr_icon = "mdi:air-purifier"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:

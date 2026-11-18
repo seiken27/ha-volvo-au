@@ -18,7 +18,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .button import raise_if_command_failed
-from .entity import VolvoEntity
+from .entity import VolvoEntity, async_gate_unsupported
 from .online import ensure_car_online
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,12 +31,15 @@ async def async_setup_entry(
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
-        [VolvoChargeCurrentLimit(coordinator), VolvoTargetSoc(coordinator)]
+        async_gate_unsupported(
+            hass, coordinator, "number", [VolvoChargeCurrentLimit(coordinator), VolvoTargetSoc(coordinator)]
+        )
     )
 
 
 class VolvoChargeCurrentLimit(VolvoEntity, NumberEntity):
     _attr_name = "Charge current limit"
+    requires_capability = "supportsChargeAmperageLimitSetting"
     _attr_icon = "mdi:current-ac"
     _attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
     _attr_native_min_value = 6
@@ -77,6 +80,7 @@ class VolvoTargetSoc(VolvoEntity, NumberEntity):
     """Target state-of-charge for charging, set as a custom (one-off) target."""
 
     _attr_name = "Target SoC"
+    requires_capability = "supportsTargetChargeLevelSetting"
     _attr_icon = "mdi:battery-charging-high"
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_native_min_value = 20

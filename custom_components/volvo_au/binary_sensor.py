@@ -16,7 +16,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
-from .entity import VolvoEntity
+from .entity import VolvoEntity, async_gate_unsupported
 from .online import car_status
 
 
@@ -110,6 +110,7 @@ def _in_use(snap: dict[str, Any]) -> bool | None:
 @dataclass(frozen=True, kw_only=True)
 class VolvoBinaryDescription(BinarySensorEntityDescription):
     value_fn: Callable[[dict[str, Any]], bool | None]
+    requires_capability: str | None = None
 
 
 DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
@@ -230,24 +231,28 @@ DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
     ),
     VolvoBinaryDescription(
         key="tyre_fl_warning",
+        requires_capability="reportsTyrePressure",
         name="Tyre front-left pressure",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda s: _warning(s, "frontLeftTyrePressureWarning"),
     ),
     VolvoBinaryDescription(
         key="tyre_fr_warning",
+        requires_capability="reportsTyrePressure",
         name="Tyre front-right pressure",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda s: _warning(s, "frontRightTyrePressureWarning"),
     ),
     VolvoBinaryDescription(
         key="tyre_rl_warning",
+        requires_capability="reportsTyrePressure",
         name="Tyre rear-left pressure",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda s: _warning(s, "rearLeftTyrePressureWarning"),
     ),
     VolvoBinaryDescription(
         key="tyre_rr_warning",
+        requires_capability="reportsTyrePressure",
         name="Tyre rear-right pressure",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda s: _warning(s, "rearRightTyrePressureWarning"),
@@ -260,6 +265,7 @@ DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
     ),
     VolvoBinaryDescription(
         key="light_warning",
+        requires_capability="reportsLightWarnings",
         name="Light warning",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=_any_light_warning,
@@ -279,7 +285,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(VolvoBinarySensor(coordinator, d) for d in DESCRIPTIONS)
+    async_add_entities(
+        async_gate_unsupported(hass, coordinator, "binary_sensor", [VolvoBinarySensor(coordinator, d) for d in DESCRIPTIONS])
+    )
     async_add_entities([VolvoOnlineSensor(coordinator)])
 
 
@@ -293,6 +301,7 @@ class VolvoBinarySensor(VolvoEntity, BinarySensorEntity):
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = description
+        self.requires_capability = description.requires_capability
         self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_{description.key}"
 
     @property
