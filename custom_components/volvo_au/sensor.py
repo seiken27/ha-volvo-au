@@ -231,16 +231,6 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda s: _path(s, "odometer", "odometer", "averageSpeedKmPerHour"),
     ),
-    # Charge target / amp limit
-    VolvoSensorDescription(
-        key="target_soc",
-        requires_data="target_soc",
-        requires_capability="supportsTargetChargeLevelSetting",
-        translation_key="target_soc",
-        native_unit_of_measurement=PERCENTAGE,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda s: _path(s, "target_soc", "targetSoc", "batteryChargeTargetLevel"),
-    ),
     # Usage / availability
     VolvoSensorDescription(
         key="usage_mode",
@@ -323,8 +313,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
-    # Replaced by the Charge current limit number (19 Nov 2026).
-    async_remove_registered_entities(hass, "sensor", [f"{DOMAIN}_{coordinator.client.vin}_amp_limit"])
+    # Replaced by the Charge current limit and Target SoC numbers (19 Nov 2026).
+    async_remove_registered_entities(
+        hass, "sensor", [f"{DOMAIN}_{coordinator.client.vin}_{key}" for key in ("amp_limit", "target_soc")]
+    )
     async_add_entities(async_gate_unsupported(hass, coordinator, "sensor", [VolvoSensor(coordinator, d) for d in SENSORS]))
     if car_battery_capacity_kwh(coordinator.car_info):
         async_add_entities([VolvoBatteryCapacity(coordinator)])

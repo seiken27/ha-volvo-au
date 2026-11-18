@@ -332,9 +332,6 @@
       "software_version": {
         "name": "Software version"
       },
-      "target_soc": {
-        "name": "Target SoC"
-      },
       "time_to_full": {
         "name": "Time to full"
       },

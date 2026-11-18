@@ -214,8 +214,8 @@ def test_duplicates_are_gone_and_their_registry_entries_cleaned(monkeypatch):
 
     assert "amp_limit" not in {d.key for d in volvo.sensor.SENSORS}
     assert {spec[0] for spec in volvo.button.COMMAND_BUTTONS}.isdisjoint({"charge_start", "charge_stop"})
-    # The Target SoC sensor stays: user automations read it.
-    assert "target_soc" in {d.key for d in volvo.sensor.SENSORS}
+    # Target SoC is the number only; the read-only sensor duplicated it.
+    assert "target_soc" not in {d.key for d in volvo.sensor.SENSORS}
 
     volvo.entity.async_remove_registered_entities(None, "sensor", ["u", "missing"])
     assert registry.removed == ["sensor.old"]
