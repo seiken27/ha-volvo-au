@@ -17,6 +17,7 @@ from .const import (
     CONF_REFRESH_TOKEN,
     CONF_ACTIVE_INTERVAL,
     CONF_IDLE_INTERVAL,
+    CONF_LIVE_UPDATES,
     CONF_REGISTRATION_PLATE,
     CONF_VIN,
     DEFAULT_APP_INSTALLATION_ID,
@@ -85,11 +86,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         car_info=car_info,
         idle_interval=entry.options.get(CONF_IDLE_INTERVAL, POLL_IDLE),
         active_interval=entry.options.get(CONF_ACTIVE_INTERVAL, POLL_ACTIVE),
+        live_updates=entry.options.get(CONF_LIVE_UPDATES, True),
     )
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await coordinator.async_start_streams()
+    entry.async_on_unload(coordinator.async_stop_streams)
     # The listener also fires when a rotated refresh token is saved to entry.data, so only
     # reload when the options (plate override, poll intervals) actually changed.
     options_at_setup = dict(entry.options)

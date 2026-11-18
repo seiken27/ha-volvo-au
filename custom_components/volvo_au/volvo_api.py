@@ -41,6 +41,9 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Seconds of silence on an open update stream before we give up on that connection and reconnect.
+STREAM_IDLE_TIMEOUT = 900.0
+
 
 def _parse_parked_location_frame(frame: bytes) -> dict[str, Any] | None:
     """Decode a StreamLastParkedLocations protobuf frame."""
@@ -511,6 +514,24 @@ class VolvoClient:
                 if line:
                     return json.loads(line)
         raise VolvoApiError(f"No data from {path}")
+
+    async def stream_ndjson(self, path: str, body: dict[str, Any]):
+        """Yield every JSON line the gateway sends, until it closes the connection.
+
+        Unlike ``_ndjson_first_frame`` this keeps the connection open, so a car that pushes updates
+        delivers them as they happen. The read timeout only fires when the connection goes silent for
+        ``STREAM_IDLE_TIMEOUT`` seconds (the caller reconnects).
+        """
+        headers = await self._auth_headers()
+        headers.update({"Accept": "application/x-ndjson", "Content-Type": "application/x-ndjson", "vin": self.vin})
+        timeout = aiohttp.ClientTimeout(total=None, connect=15, sock_read=STREAM_IDLE_TIMEOUT)
+        async with self._session.post(API_BASE + path, headers=headers, data=json.dumps(body), timeout=timeout) as r:
+            if r.status != 200:
+                raise VolvoApiError(f"POST {path}: {r.status} {(await r.text())[:200]}")
+            async for raw in r.content:
+                line = raw.strip()
+                if line:
+                    yield json.loads(line)
 
     # -------- protobuf / gRPC bits (same as sync client) --------
 

@@ -60,12 +60,14 @@
         "data": {
           "idle_interval": "Idle poll interval (seconds)",
           "active_interval": "Active poll interval (seconds)",
-          "registration_plate": "Registration plate (optional)"
+          "registration_plate": "Registration plate (optional)",
+          "live_updates": "Live updates (experimental)"
         },
         "data_description": {
           "registration_plate": "Shown in the device name. Volvo normally supplies this itself; only fill it in to override it. Leave blank to use the plate Volvo reports.",
           "idle_interval": "Default 300 (5 minutes). Between 60 and 86400.",
-          "active_interval": "Default 60 (1 minute). Between 10 and 3600. Never slower than the idle interval."
+          "active_interval": "Default 60 (1 minute). Between 10 and 3600. Never slower than the idle interval.",
+          "live_updates": "Keep a connection open to Volvo so changes arrive as they happen, as the Polestar integration does. If Volvo only ever sends one reading for a service, that service falls back to polling by itself. Look for 'live updates work' in the log to confirm."
         },
         "description": "How often to ask Volvo for updates. Idle is used while the car is quiet (parked, even if plugged in); Active while it is charging, in use, has something open or unlocked, or the climate is running. A command or the end of a trip always triggers fast checks for a minute or so."
       }
