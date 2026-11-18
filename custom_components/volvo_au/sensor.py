@@ -20,17 +20,21 @@ from homeassistant.const import (
     UnitOfEnergy,
     UnitOfLength,
     UnitOfPower,
+    UnitOfPressure,
     UnitOfSpeed,
     UnitOfTemperature,
     UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
-from .entity import VolvoEntity
+from .entity import VolvoEntity, async_gate_unsupported
 from .online import car_status, status_text
+from .powertrain import build_week, drivetrain_type, engine_type, structure_week, tyre_pressure_kpa
+from .powertrain import battery_capacity_kwh as car_battery_capacity_kwh
 
 
 def _path(snap: dict[str, Any], *keys: str) -> Any:
@@ -86,6 +90,22 @@ def _epoch_to_dt(seconds: Any) -> datetime | None:
 @dataclass(frozen=True, kw_only=True)
 class VolvoSensorDescription(SensorEntityDescription):
     value_fn: Callable[[dict[str, Any]], Any]
+    requires_combustion_engine: bool = False
+    requires_capability: str | None = None
+
+
+def _tyre(wheel: str, label: str) -> VolvoSensorDescription:
+    return VolvoSensorDescription(
+        key=f"tyre_{wheel}_pressure",
+        requires_capability="reportsAbsoluteTyrePressure",
+        name=f"Tyre {label} pressure",
+        native_unit_of_measurement=UnitOfPressure.KPA,
+        suggested_unit_of_measurement=UnitOfPressure.PSI,
+        device_class=SensorDeviceClass.PRESSURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        value_fn=lambda s: tyre_pressure_kpa((s.get("health") or {}).get("health"), wheel),
+    )
 
 
 SENSORS: tuple[VolvoSensorDescription, ...] = (
@@ -101,6 +121,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="range_km",
+        requires_capability="reportsElectricRange",
         name="Range",
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         device_class=SensorDeviceClass.DISTANCE,
@@ -161,6 +182,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="avg_consumption",
+        requires_capability="reportsAvgElectricConsumption",
         name="Average consumption",
         native_unit_of_measurement="kWh/100km",
         state_class=SensorStateClass.MEASUREMENT,
@@ -195,6 +217,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="avg_speed",
+        requires_capability="reportsAvgSpeed",
         name="Average speed",
         native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
         device_class=SensorDeviceClass.SPEED,
@@ -204,6 +227,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     # Charge target / amp limit
     VolvoSensorDescription(
         key="target_soc",
+        requires_capability="supportsTargetChargeLevelSetting",
         name="Target SoC",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -211,6 +235,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="amp_limit",
+        requires_capability="supportsChargeAmperageLimitSetting",
         name="Charge current limit",
         native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -255,6 +280,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     VolvoSensorDescription(
         key="engine_hours_to_service",
         name="Engine hours to service",
+        requires_combustion_engine=True,
         native_unit_of_measurement=UnitOfTime.HOURS,
         device_class=SensorDeviceClass.DURATION,
         state_class=SensorStateClass.MEASUREMENT,
@@ -263,6 +289,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     # Air purification
     VolvoSensorDescription(
         key="air_quality_index",
+        requires_capability="supportsAirPurificationInternalMeasurement",
         name="Cabin air quality index",
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda s: _path(
@@ -271,12 +298,17 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     ),
     VolvoSensorDescription(
         key="air_purification_last_cycle",
+        requires_capability="supportsAirPurification",
         name="Air purification last cycle",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda s: _epoch_to_dt(
             _path(s, "pre_cleaning", "preCleaning", "lastCycleCompleted", "seconds")
         ),
     ),
+    _tyre("front_left", "front-left"),
+    _tyre("front_right", "front-right"),
+    _tyre("rear_left", "rear-left"),
+    _tyre("rear_right", "rear-right"),
 )
 
 
@@ -286,8 +318,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(VolvoSensor(coordinator, d) for d in SENSORS)
-    async_add_entities([VolvoLocationAddress(coordinator), VolvoSoftwareVersion(coordinator), VolvoLastSeen(coordinator), VolvoConnection(coordinator)])
+    async_add_entities(async_gate_unsupported(hass, coordinator, "sensor", [VolvoSensor(coordinator, d) for d in SENSORS]))
+    if car_battery_capacity_kwh(coordinator.car_info):
+        async_add_entities([VolvoBatteryCapacity(coordinator)])
+    async_add_entities([VolvoLocationAddress(coordinator), VolvoSoftwareVersion(coordinator), VolvoVin(coordinator), VolvoVehicleInfo(coordinator), VolvoLastSeen(coordinator), VolvoConnection(coordinator)])
 
 
 class VolvoSensor(VolvoEntity, SensorEntity):
@@ -300,6 +334,8 @@ class VolvoSensor(VolvoEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = description
+        self.requires_combustion_engine = description.requires_combustion_engine
+        self.requires_capability = description.requires_capability
         self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_{description.key}"
 
     @property
@@ -476,6 +512,85 @@ class VolvoLocationAddress(VolvoEntity, SensorEntity):
             if best is None or float(radius) < best[0]:
                 best = (float(radius), name)
         return best[1] if best else None
+
+
+class VolvoVin(VolvoEntity, SensorEntity):
+    """The VIN, with the registration plate (if known) as an attribute."""
+
+    _attr_name = "VIN"
+    _attr_icon = "mdi:card-account-details-outline"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: VolvoCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_vin"
+
+    @property
+    def native_value(self) -> str:
+        return self._vin
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        c = self.coordinator
+        attrs = {
+            "registration_plate": c.registration_plate,
+            "model": c.model_name,
+            "model_year": c.model_year,
+            "structure_week": structure_week(c.car_info),
+            "build_week": build_week(c.car_info),
+            "powertrain": engine_type(c.car_info),
+            "drivetrain": drivetrain_type(c.car_info),
+        }
+        return {k: v for k, v in attrs.items() if v}
+
+
+class VolvoBatteryCapacity(VolvoEntity, SensorEntity):
+    """Battery capacity as the car reports it (from /car-information/car)."""
+
+    _attr_name = "Battery Capacity"
+    _attr_device_class = SensorDeviceClass.ENERGY_STORAGE
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: VolvoCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_battery_capacity"
+
+    @property
+    def native_value(self) -> float | None:
+        return car_battery_capacity_kwh(self.coordinator.car_info)
+
+
+class VolvoVehicleInfo(VolvoEntity, SensorEntity):
+    """The car's raw record from /car-information/car, as attributes. Disabled by default.
+
+    For checking what a car reports (powertrain, capabilities, what a performance upgrade changes)
+    without signing in again outside Home Assistant. The VIN is left out.
+    """
+
+    _attr_name = "Vehicle Info"
+    _attr_icon = "mdi:text-box-search-outline"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+    _unrecorded_attributes = frozenset({"car"})
+
+    def __init__(self, coordinator: VolvoCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_vehicle_info"
+
+    @property
+    def native_value(self) -> str:
+        return "ok" if self.coordinator.car_info else "unavailable"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        car = {k: v for k, v in (self.coordinator.car_info or {}).items() if k != "vin"}
+        return {
+            "car": car,
+            "powertrain": engine_type(self.coordinator.car_info),
+            "drivetrain": drivetrain_type(self.coordinator.car_info),
+            "battery_capacity_kwh": car_battery_capacity_kwh(self.coordinator.car_info),
+        }
 
 
 class VolvoSoftwareVersion(VolvoEntity, SensorEntity):

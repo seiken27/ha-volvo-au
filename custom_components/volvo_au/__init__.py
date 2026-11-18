@@ -69,18 +69,32 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if data.get(CONF_MODEL_NAME) is None:
         data = await _migrate_model_info(hass, entry, client, data)
 
+    car_info = await _fetch_car_info(client, data[CONF_VIN])
+
     coordinator = VolvoCoordinator(
         hass,
         client,
         model_name=data.get(CONF_MODEL_NAME),
         model_year=data.get(CONF_MODEL_YEAR),
-        registration_plate=data.get(CONF_REGISTRATION_PLATE),
+        # An override typed in the options wins over the plate Volvo reports.
+        registration_plate=entry.options.get(CONF_REGISTRATION_PLATE) or data.get(CONF_REGISTRATION_PLATE),
+        car_info=car_info,
     )
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # The listener also fires when a rotated refresh token is saved to entry.data, so only
+    # reload when the options (the plate override) actually changed.
+    options_at_setup = dict(entry.options)
+
+    async def _async_options_updated(hass: HomeAssistant, updated: ConfigEntry) -> None:
+        if dict(updated.options) != options_at_setup:
+            await hass.config_entries.async_reload(updated.entry_id)
+
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     return True
+
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -88,6 +102,16 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unloaded:
         hass.data[DOMAIN].pop(entry.entry_id, None)
     return unloaded
+
+
+async def _fetch_car_info(client: VolvoClient, vin: str) -> dict | None:
+    """The car's own record (powertrain, capabilities). Best effort: ``None`` on any failure."""
+    try:
+        cars = await client.list_cars()
+    except Exception:  # noqa: BLE001
+        _LOGGER.debug("Could not read the car record", exc_info=True)
+        return None
+    return next((c for c in cars if isinstance(c, dict) and c.get("vin") == vin), None)
 
 
 async def _migrate_model_info(
