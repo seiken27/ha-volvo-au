@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Callable
@@ -53,30 +54,39 @@ def _path(snap: dict[str, Any], *keys: str) -> Any:
     return cur
 
 
-def _pretty_enum(raw: Any, *prefixes: str) -> str | None:
-    """Strip a known backend enum prefix and return a sentence-case label,
-    e.g. "CHARGING_STATUS_V2_IDLE" -> "Idle". HA does *not* auto-capitalize
-    sensor states for us (that only happens for device_class="enum" plus a
-    matching translation string, which this integration doesn't define —
-    same as the Polestar integration's own enum_name() helper, which also
-    just lowercases), so we do it here instead of leaving raw/lowercase
-    text on screen.
+_LOGGER = logging.getLogger(__name__)
 
-    ``prefixes`` are tried in order; the first one that matches is
-    stripped (useful when a field has drifted between a V1/V2 naming,
-    e.g. ``CHARGING_STATUS_V2_IDLE`` vs ``CHARGING_STATUS_IDLE``).
+# The states of the three enum sensors. The stored state is the lowercase key (same as the Polestar
+# integration); strings.json turns it into text such as "Smart charging paused" for display.
+CHARGING_STATUS_OPTIONS = (
+    "charging", "idle", "scheduled", "discharging", "error", "smart_charging", "done", "smart_charging_paused",
+)
+CHARGER_CONNECTION_OPTIONS = ("connected", "disconnected", "fault")
+USAGE_MODE_OPTIONS = ("abandoned", "inactive", "convenience", "active", "driving", "engine_on", "engine_off")
+_reported_unknown: set[str] = set()
+
+
+def _enum_state(raw: Any, options: tuple[str, ...], *prefixes: str) -> str | None:
+    """Turn a backend enum such as ``CHARGING_STATUS_V2_IDLE`` into its option key (``idle``).
+
+    Home Assistant rejects an enum sensor state that is not one of its options, so a value we do not know
+    (or ``UNSPECIFIED``) gives no state, and is logged once so it can be added.
+    ``prefixes`` are tried in order; the first that matches is stripped (V1/V2 naming drift).
     """
     if not isinstance(raw, str) or not raw:
         return None
-    s = raw
+    key = raw
     for prefix in prefixes:
-        if s.startswith(prefix):
-            s = s[len(prefix):]
+        if key.startswith(prefix):
+            key = key[len(prefix):]
             break
-    s = s.replace("_", " ").strip().lower()
-    if not s:
-        return None
-    return s[0].upper() + s[1:]
+    key = key.strip().lower()
+    if key in options:
+        return key
+    if key not in ("unspecified", "unknown") and raw not in _reported_unknown:
+        _reported_unknown.add(raw)
+        _LOGGER.warning("Volvo reported the state %s, which this integration does not know; showing no state", raw)
+    return None
 
 
 def _round1(v: Any) -> float | None:
@@ -150,9 +160,12 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
         key="charging_status",
         translation_key="charging_status",
         icon="mdi:ev-station",
-        value_fn=lambda s: _pretty_enum(
+        device_class=SensorDeviceClass.ENUM,
+        options=list(CHARGING_STATUS_OPTIONS),
+        value_fn=lambda s: _enum_state(
             _path(s, "battery", "battery", "chargingStatusV2")
             or _path(s, "battery", "battery", "chargingStatus"),
+            CHARGING_STATUS_OPTIONS,
             "CHARGING_STATUS_V2_",
             "CHARGING_STATUS_",
         ),
@@ -161,8 +174,11 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
         key="charger_connection",
         translation_key="charger_connection",
         icon="mdi:power-plug",
-        value_fn=lambda s: _pretty_enum(
+        device_class=SensorDeviceClass.ENUM,
+        options=list(CHARGER_CONNECTION_OPTIONS),
+        value_fn=lambda s: _enum_state(
             _path(s, "battery", "battery", "chargerConnectionStatus"),
+            CHARGER_CONNECTION_OPTIONS,
             "CHARGER_CONNECTION_STATUS_",
         ),
     ),
@@ -246,8 +262,11 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
         translation_key="usage_mode",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:car-info",
-        value_fn=lambda s: _pretty_enum(
+        device_class=SensorDeviceClass.ENUM,
+        options=list(USAGE_MODE_OPTIONS),
+        value_fn=lambda s: _enum_state(
             _path(s, "availability", "availability", "usageMode"),
+            USAGE_MODE_OPTIONS,
             "USAGE_MODE_",
         ),
     ),

@@ -233,6 +233,33 @@ def test_start_charging_is_refused_when_not_plugged_in(volvo):
         asyncio.run(switch.async_turn_on())
 
 
+# ---- enum sensor states ---------------------------------------------------------------------------------------
+
+
+def test_enum_states_are_lowercase_keys_with_translations(monkeypatch):
+    import json
+    from pathlib import Path
+
+    volvo = load_volvo(monkeypatch, FakeRegistry())
+    sensor = volvo.sensor
+    snap = {"battery": {"battery": {"chargingStatusV2": "CHARGING_STATUS_V2_SMART_CHARGING_PAUSED",
+                                    "chargerConnectionStatus": "CHARGER_CONNECTION_STATUS_CONNECTED"}},
+            "availability": {"availability": {"usageMode": "USAGE_MODE_ENGINE_OFF"}}}
+    by_key = {d.key: d for d in sensor.SENSORS}
+
+    assert by_key["charging_status"].value_fn(snap) == "smart_charging_paused"
+    assert by_key["charger_connection"].value_fn(snap) == "connected"
+    assert by_key["usage_mode"].value_fn(snap) == "engine_off"
+    # Unspecified and unknown values give no state rather than an invalid one.
+    assert by_key["charging_status"].value_fn({"battery": {"battery": {"chargingStatusV2": "CHARGING_STATUS_V2_UNSPECIFIED"}}}) is None
+    assert by_key["charging_status"].value_fn({"battery": {"battery": {"chargingStatusV2": "CHARGING_STATUS_V2_NEW_THING"}}}) is None
+
+    root = Path(__file__).parents[1] / "custom_components" / "volvo_au"
+    for path in ("strings.json", "translations/en.json"):
+        translated = json.loads((root / path).read_text())["entity"]["sensor"]
+        for key in ("charging_status", "charger_connection", "usage_mode"):
+            assert set(translated[key]["state"]) == set(by_key[key].options), f"{path}: {key}"
+
 # ---- connection sensor ------------------------------------------------------------------------------------------
 
 

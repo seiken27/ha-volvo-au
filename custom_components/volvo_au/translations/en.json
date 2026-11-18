@@ -282,7 +282,12 @@
         "name": "Battery"
       },
       "charger_connection": {
-        "name": "Charger connection"
+        "name": "Charger connection",
+        "state": {
+          "connected": "Connected",
+          "disconnected": "Disconnected",
+          "fault": "Fault"
+        }
       },
       "charging_current": {
         "name": "Charging current"
@@ -291,7 +296,17 @@
         "name": "Charging power"
       },
       "charging_status": {
-        "name": "Charging status"
+        "name": "Charging status",
+        "state": {
+          "charging": "Charging",
+          "idle": "Idle",
+          "scheduled": "Scheduled",
+          "discharging": "Discharging",
+          "error": "Error",
+          "smart_charging": "Smart charging",
+          "done": "Done",
+          "smart_charging_paused": "Smart charging paused"
+        }
       },
       "charging_voltage": {
         "name": "Charging voltage"
@@ -357,7 +372,16 @@
         "name": "Tyre rear-right pressure"
       },
       "usage_mode": {
-        "name": "Usage mode"
+        "name": "Usage mode",
+        "state": {
+          "abandoned": "Abandoned",
+          "inactive": "Inactive",
+          "convenience": "Convenience",
+          "active": "Active",
+          "driving": "Driving",
+          "engine_on": "Engine on",
+          "engine_off": "Engine off"
+        }
       },
       "vehicle_info": {
         "name": "Vehicle Info"
