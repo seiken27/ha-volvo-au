@@ -8,13 +8,28 @@ from typing import Any
 from homeassistant.components.lock import LockEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity
+from .online import ensure_car_online
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _raise_if_failed(res: dict[str, Any], what: str) -> None:
+    """Tell the person that a car command was not confirmed (15 Nov 2026: a timeout used to surface as
+    an unexpected error). The state still refreshes for a minute, so a late success shows up."""
+    if res.get("ok"):
+        return
+    if res.get("timeout"):
+        raise HomeAssistantError(
+            f"{what}: the car did not confirm ({res.get('error')}). It may still happen: "
+            "Volvo's command service may be stalled. Check the lock state in a minute, or use the Volvo app."
+        )
+    raise HomeAssistantError(f"{what} failed: {res.get('error') or res.get('grpc_message') or res.get('http_status')}")
 
 
 async def async_setup_entry(
@@ -47,18 +62,22 @@ class VolvoLock(VolvoEntity, LockEntity):
         return None
 
     async def async_lock(self, **kwargs: Any) -> None:
+        ensure_car_online(self.coordinator)
         _LOGGER.debug("Lock command")
         res = await self.coordinator.client.lock()
         if not res.get("ok"):
             _LOGGER.warning("Lock failed: %s", res)
         self.coordinator.note_command()
+        _raise_if_failed(res, "Lock")
 
     async def async_unlock(self, **kwargs: Any) -> None:
+        ensure_car_online(self.coordinator)
         _LOGGER.debug("Unlock command")
         res = await self.coordinator.client.unlock()
         if not res.get("ok"):
             _LOGGER.warning("Unlock failed: %s", res)
         self.coordinator.note_command()
+        _raise_if_failed(res, "Unlock")
 
 
 class VolvoTailgateLock(VolvoEntity, LockEntity):
@@ -123,6 +142,7 @@ class VolvoTailgateLock(VolvoEntity, LockEntity):
         super()._handle_coordinator_update()
 
     async def async_lock(self, **kwargs: Any) -> None:
+        ensure_car_online(self.coordinator)
         _LOGGER.debug("Tailgate lock -> lock all")
         self._latched_unlocked = False
         self._was_tailgate_open = False
@@ -131,8 +151,10 @@ class VolvoTailgateLock(VolvoEntity, LockEntity):
         if not res.get("ok"):
             _LOGGER.warning("Lock failed: %s", res)
         self.coordinator.note_command()
+        _raise_if_failed(res, "Lock")
 
     async def async_unlock(self, **kwargs: Any) -> None:
+        ensure_car_online(self.coordinator)
         _LOGGER.debug("Unlock tailgate")
         self._latched_unlocked = True
         self._was_tailgate_open = bool(self._read_tailgate_open())
@@ -143,3 +165,4 @@ class VolvoTailgateLock(VolvoEntity, LockEntity):
             self._latched_unlocked = False
             self.async_write_ha_state()
         self.coordinator.note_command()
+        _raise_if_failed(res, "Unlock tailgate")

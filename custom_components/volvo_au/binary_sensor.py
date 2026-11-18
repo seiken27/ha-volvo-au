@@ -17,6 +17,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity
+from .online import car_status
 
 
 def _ext(snap: dict[str, Any], key: str) -> str | None:
@@ -279,6 +280,7 @@ async def async_setup_entry(
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(VolvoBinarySensor(coordinator, d) for d in DESCRIPTIONS)
+    async_add_entities([VolvoOnlineSensor(coordinator)])
 
 
 class VolvoBinarySensor(VolvoEntity, BinarySensorEntity):
@@ -299,3 +301,28 @@ class VolvoBinarySensor(VolvoEntity, BinarySensorEntity):
             return self.entity_description.value_fn(self.coordinator.data or {})
         except Exception:  # noqa: BLE001
             return None
+
+
+class VolvoOnlineSensor(VolvoEntity, BinarySensorEntity):
+    """Is the car online? Unknown (no state) when Volvo gives no evidence. See online.py."""
+
+    _attr_name = "Online"
+    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+
+    def __init__(self, coordinator: VolvoCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_online"
+
+    @property
+    def is_on(self) -> bool | None:
+        return car_status(self.coordinator.data).online
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        st = car_status(self.coordinator.data)
+        # "availability_raw" shows what Volvo sends today, so the real connectivity key can be confirmed.
+        return {
+            "evidence": st.source,
+            "last_seen": st.last_seen.isoformat() if st.last_seen else None,
+            "availability_raw": st.raw,
+        }
