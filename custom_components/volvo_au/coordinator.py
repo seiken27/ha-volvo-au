@@ -8,6 +8,7 @@ Cadence:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from datetime import timedelta
@@ -24,6 +25,7 @@ from .const import (
     POLL_POST_CMD_FAST,
     POLL_POST_CMD_WINDOW,
 )
+from .livestream import STREAMS, StreamPolicy
 from .polltiers import is_active
 from .volvo_api import VolvoApiError, VolvoAuthError, VolvoClient
 
@@ -62,6 +64,7 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         car_info: dict[str, Any] | None = None,
         idle_interval: int = POLL_IDLE,
         active_interval: int = POLL_ACTIVE,
+        live_updates: bool = True,
     ) -> None:
         super().__init__(
             hass,
@@ -70,6 +73,9 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             update_interval=timedelta(seconds=idle_interval),
         )
         self._idle_interval = idle_interval
+        self._live_updates = live_updates
+        self._stream_tasks: dict[str, asyncio.Task[None]] = {}
+        self.stream_policies: dict[str, StreamPolicy] = {}
         # The active poll is never slower than the idle one.
         self._active_interval = min(active_interval, idle_interval)
         self.client = client
@@ -111,7 +117,12 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except VolvoApiError as e:
             raise UpdateFailed(f"api: {e}") from e
 
-        # Adapt cadence for next round
+        self._adapt_interval(snap)
+        return snap
+
+    def _adapt_interval(self, snap: dict[str, Any]) -> bool:
+        """Choose the next poll interval from the latest data. Returns True when it changed."""
+        previous = self.update_interval
         now = time.time()
         # Detect end-of-trip: usage_mode transitioned from in-use -> abandoned.
         # Start a 5-min 5s burst so the lock state catches up quickly when
@@ -156,4 +167,62 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.update_interval = timedelta(seconds=self._active_interval)
         else:
             self.update_interval = timedelta(seconds=self._idle_interval)
-        return snap
+        return self.update_interval != previous
+
+    # ----- live update streams -----
+
+    async def async_start_streams(self) -> None:
+        """Keep a connection open per state service so pushed updates arrive as they happen.
+
+        The scheduled poll stays as the safety net. A stream that turns out to be a one-line snapshot is
+        dropped (see livestream.py) and that service is simply polled.
+        """
+        if not self._live_updates or self._stream_tasks:
+            return
+        for name in STREAMS:
+            self._stream_tasks[name] = self.hass.async_create_background_task(
+                self._run_stream(name), name=f"volvo-{self.client.vin}-{name}-stream"
+            )
+
+    async def async_stop_streams(self) -> None:
+        tasks = list(self._stream_tasks.values())
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        self._stream_tasks.clear()
+
+    async def _run_stream(self, name: str) -> None:
+        policy = self.stream_policies[name] = StreamPolicy()
+        path = STREAMS[name]
+        while True:
+            started = time.monotonic()
+            lines = 0
+            try:
+                async for frame in self.client.stream_ndjson(path, self.client._vid_body()):
+                    lines += 1
+                    if lines == 2 and not policy.proven:
+                        _LOGGER.info("Volvo pushes %s updates: live updates work for this service", name)
+                    self._apply_stream_frame(name, frame)
+            except asyncio.CancelledError:
+                raise
+            except Exception as err:  # noqa: BLE001 - a broken stream must never take the integration down
+                delay = policy.connection_failed()
+                _LOGGER.debug("Volvo %s stream failed (%s: %s); retrying in %.0f s", name, type(err).__name__, err, delay)
+                await asyncio.sleep(delay)
+                continue
+            delay = policy.connection_ended(lines, time.monotonic() - started)
+            if delay is None:
+                _LOGGER.info("Volvo sends %s as a one-off snapshot, not a stream; it is polled instead", name)
+                return
+            await asyncio.sleep(delay)
+
+    def _apply_stream_frame(self, name: str, frame: dict[str, Any]) -> None:
+        if self.data is None or self.data.get(name) == frame:
+            return
+        data = {**self.data, name: frame}
+        self.data = data
+        self.last_update_success = True
+        if self._adapt_interval(data):
+            self._schedule_refresh()  # start the new interval now
+        self.async_update_listeners()

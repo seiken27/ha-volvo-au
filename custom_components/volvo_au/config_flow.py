@@ -32,6 +32,7 @@ from .const import (
     CONF_APP_INSTALLATION_ID,
     CONF_DPOP_PRIVATE_KEY_PEM,
     CONF_IDLE_INTERVAL,
+    CONF_LIVE_UPDATES,
     CONF_MODEL_NAME,
     CONF_MODEL_YEAR,
     CONF_REFRESH_TOKEN,
@@ -81,6 +82,7 @@ class VolvoAuOptionsFlow(config_entries.OptionsFlow):
             options: dict[str, Any] = {
                 CONF_IDLE_INTERVAL: user_input[CONF_IDLE_INTERVAL],
                 CONF_ACTIVE_INTERVAL: user_input[CONF_ACTIVE_INTERVAL],
+                CONF_LIVE_UPDATES: user_input.get(CONF_LIVE_UPDATES, True),
             }
             # A blank plate removes the override, so the plate from Volvo is used again.
             if plate:
@@ -97,6 +99,7 @@ class VolvoAuOptionsFlow(config_entries.OptionsFlow):
                     vol.Optional(CONF_ACTIVE_INTERVAL, default=opts.get(CONF_ACTIVE_INTERVAL, POLL_ACTIVE)): vol.All(
                         int, vol.Range(min=10, max=3600)
                     ),
+                    vol.Optional(CONF_LIVE_UPDATES, default=opts.get(CONF_LIVE_UPDATES, True)): bool,
                     vol.Optional(
                         CONF_REGISTRATION_PLATE,
                         description={"suggested_value": opts.get(CONF_REGISTRATION_PLATE, "")},
