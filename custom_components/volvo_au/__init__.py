@@ -69,6 +69,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if data.get(CONF_MODEL_NAME) is None:
         data = await _migrate_model_info(hass, entry, client, data)
 
+    car_info = await _fetch_car_info(client, data[CONF_VIN])
+
     coordinator = VolvoCoordinator(
         hass,
         client,
@@ -76,6 +78,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         model_year=data.get(CONF_MODEL_YEAR),
         # An override typed in the options wins over the plate Volvo reports.
         registration_plate=entry.options.get(CONF_REGISTRATION_PLATE) or data.get(CONF_REGISTRATION_PLATE),
+        car_info=car_info,
     )
     await coordinator.async_config_entry_first_refresh()
 
@@ -99,6 +102,16 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unloaded:
         hass.data[DOMAIN].pop(entry.entry_id, None)
     return unloaded
+
+
+async def _fetch_car_info(client: VolvoClient, vin: str) -> dict | None:
+    """The car's own record (powertrain, capabilities). Best effort: ``None`` on any failure."""
+    try:
+        cars = await client.list_cars()
+    except Exception:  # noqa: BLE001
+        _LOGGER.debug("Could not read the car record", exc_info=True)
+        return None
+    return next((c for c in cars if isinstance(c, dict) and c.get("vin") == vin), None)
 
 
 async def _migrate_model_info(

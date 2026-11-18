@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
-from .entity import VolvoEntity
+from .entity import VolvoEntity, async_gate_combustion_only
 from .online import ensure_car_online
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,10 +25,11 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([
+    buttons = [
         VolvoRefreshButton(coordinator),
         *(VolvoCommandButton(coordinator, spec) for spec in COMMAND_BUTTONS),
-    ])
+    ]
+    async_add_entities(async_gate_combustion_only(hass, coordinator, "button", buttons))
 
 
 class VolvoRefreshButton(VolvoEntity, ButtonEntity):
@@ -87,6 +88,7 @@ class VolvoCommandButton(VolvoEntity, ButtonEntity):
         self._attr_name = name
         self._attr_icon = icon
         self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_{suffix}"
+        self.requires_combustion_engine = suffix == "engine_remote_start"
 
     async def async_press(self) -> None:
         ensure_car_online(self.coordinator)  # raises when the car is known offline; nothing is sent

@@ -105,6 +105,7 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         model_name: str | None = None,
         model_year: int | str | None = None,
         registration_plate: str | None = None,
+        car_info: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(
             hass,
@@ -116,6 +117,8 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.model_name = model_name
         self.model_year = model_year
         self.registration_plate = registration_plate
+        # The car's own record from /car-information/car (powertrain, capabilities); None if it could not be read.
+        self.car_info = car_info
         self._last_command_at: float = 0.0
         self._post_trip_until: float = 0.0
         self._prev_in_use: bool | None = None

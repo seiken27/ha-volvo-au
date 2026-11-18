@@ -30,8 +30,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
-from .entity import VolvoEntity
+from .entity import VolvoEntity, async_gate_combustion_only
 from .online import car_status, status_text
+from .powertrain import drivetrain_type, engine_type
 
 
 def _path(snap: dict[str, Any], *keys: str) -> Any:
@@ -87,6 +88,7 @@ def _epoch_to_dt(seconds: Any) -> datetime | None:
 @dataclass(frozen=True, kw_only=True)
 class VolvoSensorDescription(SensorEntityDescription):
     value_fn: Callable[[dict[str, Any]], Any]
+    requires_combustion_engine: bool = False
 
 
 SENSORS: tuple[VolvoSensorDescription, ...] = (
@@ -256,6 +258,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     VolvoSensorDescription(
         key="engine_hours_to_service",
         name="Engine hours to service",
+        requires_combustion_engine=True,
         native_unit_of_measurement=UnitOfTime.HOURS,
         device_class=SensorDeviceClass.DURATION,
         state_class=SensorStateClass.MEASUREMENT,
@@ -287,7 +290,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(VolvoSensor(coordinator, d) for d in SENSORS)
+    async_add_entities(async_gate_combustion_only(hass, coordinator, "sensor", [VolvoSensor(coordinator, d) for d in SENSORS]))
     async_add_entities([VolvoLocationAddress(coordinator), VolvoSoftwareVersion(coordinator), VolvoVin(coordinator), VolvoLastSeen(coordinator), VolvoConnection(coordinator)])
 
 
@@ -301,6 +304,7 @@ class VolvoSensor(VolvoEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = description
+        self.requires_combustion_engine = description.requires_combustion_engine
         self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_{description.key}"
 
     @property
@@ -501,6 +505,8 @@ class VolvoVin(VolvoEntity, SensorEntity):
             "registration_plate": c.registration_plate,
             "model": c.model_name,
             "model_year": c.model_year,
+            "powertrain": engine_type(c.car_info),
+            "drivetrain": drivetrain_type(c.car_info),
         }
         return {k: v for k, v in attrs.items() if v}
 

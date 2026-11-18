@@ -2,17 +2,22 @@
 
 from __future__ import annotations
 
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
+from .powertrain import has_combustion_engine
 
 
 class VolvoEntity(CoordinatorEntity[VolvoCoordinator]):
     """Common base — every entity shares one DeviceInfo per VIN."""
 
     _attr_has_entity_name = True
+    # True for entities that only make sense on a car with a combustion engine (diesel, petrol or hybrid).
+    requires_combustion_engine = False
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
         super().__init__(coordinator)
@@ -45,3 +50,31 @@ class VolvoEntity(CoordinatorEntity[VolvoCoordinator]):
             serial_number=vin,
             sw_version=sw_version,
         )
+
+
+@callback
+def async_gate_combustion_only(
+    hass: HomeAssistant, coordinator: VolvoCoordinator, domain: str, entities: list[VolvoEntity]
+) -> list[VolvoEntity]:
+    """Drop combustion-only entities when the car says it is electric, and disable them in the registry.
+
+    They carry ``disabled_by=INTEGRATION`` and come back by themselves if the car ever reports a
+    combustion engine. Entities the user disabled are left alone. A car that did not say what powers
+    it keeps everything.
+    """
+    registry = er.async_get(hass)
+    electric = has_combustion_engine(coordinator.car_info) is False
+    kept: list[VolvoEntity] = []
+    for entity in entities:
+        if not entity.requires_combustion_engine:
+            kept.append(entity)
+            continue
+        entity_id = registry.async_get_entity_id(domain, DOMAIN, entity.unique_id)
+        entry = registry.async_get(entity_id) if entity_id else None
+        if not electric:
+            if entry is not None and entry.disabled_by is er.RegistryEntryDisabler.INTEGRATION:
+                registry.async_update_entity(entity_id, disabled_by=None)
+            kept.append(entity)
+        elif entry is not None and entry.disabled_by is None:
+            registry.async_update_entity(entity_id, disabled_by=er.RegistryEntryDisabler.INTEGRATION)
+    return kept
