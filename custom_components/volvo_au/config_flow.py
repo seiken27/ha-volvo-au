@@ -273,6 +273,21 @@ class VolvoAuConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
+        return await self._async_relogin(user_input, "reauth_confirm", "reauth_successful")
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Sign in again with a different Volvo ID, keeping the entry, its entity IDs and history.
+
+        The new account must have the same car (VIN), for example a guest login for the same vehicle.
+        """
+        self._reauth_entry = self._get_reconfigure_entry()
+        return await self._async_relogin(user_input, "reconfigure", "reconfigure_successful")
+
+    async def _async_relogin(
+        self, user_input: dict[str, Any] | None, step_id: str, success_reason: str
+    ) -> config_entries.ConfigFlowResult:
         if self._dpop_pem is None:
             # Fresh DPoP keypair + PKCE pair, same as async_step_user — the
             # old DPoP key is presumed dead along with the refresh token.
@@ -292,20 +307,20 @@ class VolvoAuConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._authorize_url = f"{AUTHORIZE_URL}?{urlencode(params)}"
 
         if user_input is None:
-            return self._show_reauth_form()
+            return self._show_reauth_form(step_id=step_id)
 
         raw = user_input["redirect_url"].strip()
         code = self._extract_code(raw)
         if code == "__oauth_error__":
-            return self._show_reauth_form(error="oauth_error")
+            return self._show_reauth_form(step_id=step_id, error="oauth_error")
         if not code:
-            return self._show_reauth_form(error="missing_code")
+            return self._show_reauth_form(step_id=step_id, error="missing_code")
 
         try:
             tokens = await self._exchange_code(code)
         except VolvoAuthError as e:
             _LOGGER.warning("Volvo reauth token exchange failed: %s", e)
-            return self._show_reauth_form(error="auth_failed")
+            return self._show_reauth_form(step_id=step_id, error="auth_failed")
 
         # Verify this login is for the same car as the entry being
         # reauthenticated — otherwise someone could silently swap the
@@ -326,12 +341,12 @@ class VolvoAuConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             cars = await client.list_cars()
         except VolvoApiError as e:
             _LOGGER.warning("list_cars failed during reauth: %s", e)
-            return self._show_reauth_form(error="list_cars_failed")
+            return self._show_reauth_form(step_id=step_id, error="list_cars_failed")
 
         assert self._reauth_entry is not None
         expected_vin = self._reauth_entry.data.get(CONF_VIN)
         if expected_vin and not any(c.get("vin") == expected_vin for c in cars):
-            return self._show_reauth_form(error="vin_mismatch")
+            return self._show_reauth_form(step_id=step_id, error="vin_mismatch")
 
         self.hass.config_entries.async_update_entry(
             self._reauth_entry,
@@ -342,11 +357,11 @@ class VolvoAuConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             },
         )
         await self.hass.config_entries.async_reload(self._reauth_entry.entry_id)
-        return self.async_abort(reason="reauth_successful")
+        return self.async_abort(reason=success_reason)
 
-    def _show_reauth_form(self, *, error: str | None = None):
+    def _show_reauth_form(self, *, step_id: str = "reauth_confirm", error: str | None = None):
         return self.async_show_form(
-            step_id="reauth_confirm",
+            step_id=step_id,
             data_schema=vol.Schema({vol.Required("redirect_url"): str}),
             description_placeholders={"authorize_url": self._authorize_url or ""},
             errors={"base": error} if error else {},
