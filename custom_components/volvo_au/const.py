@@ -11,6 +11,9 @@ CONF_APP_INSTALLATION_ID = "app_installation_id"
 CONF_MODEL_NAME = "model_name"
 CONF_MODEL_YEAR = "model_year"
 CONF_REGISTRATION_PLATE = "registration_plate"
+CONF_IDLE_INTERVAL = "idle_interval"      # options: seconds between polls while the car is quiet
+CONF_LIVE_UPDATES = "live_updates"          # options: keep update streams open (default on)
+CONF_ACTIVE_INTERVAL = "active_interval"  # options: seconds between polls while something is happening
 
 # Cadence (seconds)
 POLL_IDLE = 300       # 5 min when the car is dormant
