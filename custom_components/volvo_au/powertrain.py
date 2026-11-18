@@ -116,3 +116,48 @@ def capability(car: dict[str, Any] | None, key: str) -> bool | None:
     if isinstance(value, list):
         return bool(value)
     return None
+
+
+# --- Live readings (unverified key names: no test car reports them yet) --------------------------------------
+
+_ACTIONS = ("cooling_fast", "cooling", "heating", "ventilation_only", "ventilation", "not_required")
+
+
+def climate_action(climatization: dict | None) -> str | None:
+    """Heating, cooling or ventilating, from the parking climatisation record.
+
+    Reads ``heatOrCoolAction`` (the C3 field is ``heat_or_cool_action``) and falls back to the
+    running-status variants (``RUNNING_STATUS_ON_HEATING`` ...). Returns None when the car says nothing.
+    """
+    if not isinstance(climatization, dict):
+        return None
+    for raw in (climatization.get("heatOrCoolAction"), climatization.get("runningStatus")):
+        if not isinstance(raw, str):
+            continue
+        text = raw.lower()
+        for action in _ACTIONS:
+            if action.replace("_", "") in text.replace("_", ""):
+                return {"cooling_fast": "cooling", "ventilation": "ventilating", "ventilation_only": "ventilating"}.get(
+                    action, action
+                )
+    return None
+
+
+_WHEELS = {
+    "front_left": "frontLeft",
+    "front_right": "frontRight",
+    "rear_left": "rearLeft",
+    "rear_right": "rearRight",
+}
+
+
+def tyre_pressure_kpa(health: dict | None, wheel: str) -> float | None:
+    """Pressure in kPa for ``front_left`` / ``front_right`` / ``rear_left`` / ``rear_right``."""
+    if not isinstance(health, dict) or wheel not in _WHEELS:
+        return None
+    prefix = _WHEELS[wheel]
+    for key in (f"{prefix}TyrePressureKpa", f"{prefix}TyrePressure"):
+        value = health.get(key)
+        if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
+            return round(float(value), 1)
+    return None

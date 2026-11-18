@@ -20,6 +20,7 @@ from homeassistant.const import (
     UnitOfEnergy,
     UnitOfLength,
     UnitOfPower,
+    UnitOfPressure,
     UnitOfSpeed,
     UnitOfTemperature,
     UnitOfTime,
@@ -32,7 +33,7 @@ from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity, async_gate_unsupported
 from .online import car_status, status_text
-from .powertrain import build_week, drivetrain_type, engine_type, structure_week
+from .powertrain import build_week, drivetrain_type, engine_type, structure_week, tyre_pressure_kpa
 from .powertrain import battery_capacity_kwh as car_battery_capacity_kwh
 
 
@@ -91,6 +92,20 @@ class VolvoSensorDescription(SensorEntityDescription):
     value_fn: Callable[[dict[str, Any]], Any]
     requires_combustion_engine: bool = False
     requires_capability: str | None = None
+
+
+def _tyre(wheel: str, label: str) -> VolvoSensorDescription:
+    return VolvoSensorDescription(
+        key=f"tyre_{wheel}_pressure",
+        requires_capability="reportsAbsoluteTyrePressure",
+        name=f"Tyre {label} pressure",
+        native_unit_of_measurement=UnitOfPressure.KPA,
+        suggested_unit_of_measurement=UnitOfPressure.PSI,
+        device_class=SensorDeviceClass.PRESSURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        value_fn=lambda s: tyre_pressure_kpa((s.get("health") or {}).get("health"), wheel),
+    )
 
 
 SENSORS: tuple[VolvoSensorDescription, ...] = (
@@ -290,6 +305,10 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
             _path(s, "pre_cleaning", "preCleaning", "lastCycleCompleted", "seconds")
         ),
     ),
+    _tyre("front_left", "front-left"),
+    _tyre("front_right", "front-right"),
+    _tyre("rear_left", "rear-left"),
+    _tyre("rear_right", "rear-right"),
 )
 
 

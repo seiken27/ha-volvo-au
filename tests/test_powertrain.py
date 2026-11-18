@@ -97,6 +97,7 @@ XC40_FLAGS = {
         "LIGHT_WARNING_BRAKE_LIGHT_LEFT",
         "LIGHT_WARNING_HIGH_BEAM_LEFT"
     ],
+    "reportsAbsoluteTyrePressure": False,
     "reportsTyrePressure": False,
     "supportsAirPurification": True,
     "supportsAirPurificationInternalMeasurement": True,
@@ -138,4 +139,32 @@ def test_only_tyre_pressure_is_hidden_on_the_real_xc40():
     keys = _gated_keys()
     assert keys <= set(XC40_FLAGS), f"add these flags to XC40_FLAGS: {sorted(keys - set(XC40_FLAGS))}"
     hidden = {k for k in keys if powertrain.capability(XC40_FLAGS, k) is False}
-    assert hidden == {"reportsTyrePressure"}
+    assert hidden == {"reportsTyrePressure", "reportsAbsoluteTyrePressure"}
+
+
+@pytest.mark.parametrize(
+    ("record", "expected"),
+    [
+        ({"heatOrCoolAction": "HEAT_OR_COOL_ACTION_COOLING"}, "cooling"),
+        ({"heatOrCoolAction": "HEAT_OR_COOL_ACTION_COOLING_FAST"}, "cooling"),
+        ({"heatOrCoolAction": "HEAT_OR_COOL_ACTION_HEATING"}, "heating"),
+        ({"heatOrCoolAction": "HEAT_OR_COOL_ACTION_VENTILATION_ONLY"}, "ventilating"),
+        ({"heatOrCoolAction": "HEAT_OR_COOL_ACTION_NOT_REQUIRED"}, "not_required"),
+        ({"runningStatus": "RUNNING_STATUS_ON_HEATING"}, "heating"),
+        ({"runningStatus": "RUNNING_STATUS_OFF"}, None),
+        ({}, None),
+        (None, None),
+    ],
+)
+def test_climate_action(record, expected):
+    assert powertrain.climate_action(record) == expected
+
+
+def test_tyre_pressure_kpa():
+    health = {"frontLeftTyrePressureKpa": 250.04, "rearRightTyrePressure": 240, "frontRightTyrePressureKpa": 0}
+    assert powertrain.tyre_pressure_kpa(health, "front_left") == 250.0
+    assert powertrain.tyre_pressure_kpa(health, "rear_right") == 240.0
+    assert powertrain.tyre_pressure_kpa(health, "front_right") is None  # zero means no reading
+    assert powertrain.tyre_pressure_kpa(health, "rear_left") is None
+    assert powertrain.tyre_pressure_kpa(None, "front_left") is None
+    assert powertrain.tyre_pressure_kpa(health, "spare") is None

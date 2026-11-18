@@ -14,6 +14,7 @@ from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity, async_gate_unsupported
 from .online import ensure_car_online
+from .powertrain import climate_action
 from .schedule import current_schedule
 
 _LOGGER = logging.getLogger(__name__)
@@ -109,11 +110,15 @@ class VolvoClimatizationSwitch(VolvoEntity, SwitchEntity):
         ).get("parkingClimatization") or {}
         if not pc:
             return None
-        return {
+        attrs = {
             "runtime_left_minutes": pc.get("runtimeLeftMinutes"),
             "ventilation": pc.get("ventilation"),
             "start_reason": pc.get("startReason"),
         }
+        action = climate_action(pc)
+        if action:
+            attrs["action"] = action  # heating / cooling / ventilating / not_required
+        return attrs
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         ensure_car_online(self.coordinator)
