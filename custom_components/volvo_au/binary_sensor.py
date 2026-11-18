@@ -20,7 +20,7 @@ from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity, async_gate_unsupported
 from .online import car_status
-from .powertrain import driving, light_status
+from .powertrain import in_use, light_status
 
 
 def _ext(snap: dict[str, Any], key: str) -> str | None:
@@ -106,9 +106,9 @@ def _light_attributes(snap: dict[str, Any]) -> dict[str, Any]:
 
 
 def _in_use(snap: dict[str, Any]) -> bool | None:
-    """True only while the car is being driven (Inactive, Active and Abandoned are all False)."""
+    """True while the car is being driven or Volvo says it is unavailable because it is in use."""
     avail = (snap.get("availability") or {}).get("availability") or {}
-    return driving(avail.get("usageMode"))
+    return in_use(avail, car_status(snap).online)
 
 
 @dataclass(frozen=True, kw_only=True)

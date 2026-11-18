@@ -223,3 +223,14 @@ def test_light_status_all_ok_and_nothing_known():
     assert powertrain.light_status({"aWarning": "X_UNKNOWN"})[0] is None
     assert powertrain.light_status({}) == (None, {})
     assert powertrain.light_status(None) == (None, {})
+
+
+def test_in_use_follows_driving_or_the_car_in_use_reason():
+    drive = {"usageMode": "USAGE_MODE_ACTIVE", "unavailableReason": "UNAVAILABLE_REASON_CAR_IN_USE"}
+    assert powertrain.in_use({"usageMode": "USAGE_MODE_DRIVING"}, True) is True
+    assert powertrain.in_use(drive, False) is True  # the 19 Nov drive: offline, "the car is in use"
+    assert powertrain.in_use(drive, None) is True
+    assert powertrain.in_use(drive, True) is False  # a stale reason on a car that is online again
+    assert powertrain.in_use({"usageMode": "USAGE_MODE_INACTIVE", "unavailableReason": "UNAVAILABLE_REASON_NO_INTERNET"}, False) is False
+    assert powertrain.in_use({}, None) is None
+    assert powertrain.in_use(None, None) is None

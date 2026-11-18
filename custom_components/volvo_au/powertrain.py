@@ -200,6 +200,24 @@ def driving(usage_mode: Any) -> bool | None:
     return usage_mode.endswith("_DRIVING")
 
 
+def in_use(avail: dict[str, Any] | None, online: bool | None) -> bool | None:
+    """Is the car being used (driven), so a remote command cannot reach it?
+
+    True when Volvo reports Driving, or reports the car unavailable because it is in use
+    (``unavailableReason`` ending ``_CAR_IN_USE``): the Volvo app and the Connection sensor show that, and
+    on 19 Nov 2026 it matched the drive exactly. ``online`` is the car's online state; a stale reason on a
+    car that is online again does not count. None when Volvo says nothing useful.
+    """
+    avail = avail or {}
+    by_mode = driving(avail.get("usageMode"))
+    if by_mode is True:
+        return True
+    reason = str(avail.get("unavailableReason") or "").upper()
+    if reason.endswith("_CAR_IN_USE") and online is not True:
+        return True
+    return by_mode
+
+
 def _snake(name: str) -> str:
     out = []
     for ch in name:
