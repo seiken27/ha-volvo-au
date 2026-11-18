@@ -17,7 +17,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
+from .button import raise_if_command_failed
 from .entity import VolvoEntity
+from .online import ensure_car_online
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,12 +62,15 @@ class VolvoChargeCurrentLimit(VolvoEntity, NumberEntity):
             return None
 
     async def async_set_native_value(self, value: float) -> None:
+        ensure_car_online(self.coordinator)
         amps = int(round(value))
         _LOGGER.debug("SetAmpLimit(%s A)", amps)
         res = await self.coordinator.client.set_amp_limit(amps)
         if not res.get("ok"):
             _LOGGER.warning("SetAmpLimit failed: %s", res)
         self.coordinator.note_command()
+        # Before 17 Nov 2026 a refused value was only logged, so the slider just jumped back.
+        raise_if_command_failed(res, f"Charge current {amps} A")
 
 
 class VolvoTargetSoc(VolvoEntity, NumberEntity):
@@ -97,9 +102,11 @@ class VolvoTargetSoc(VolvoEntity, NumberEntity):
             return None
 
     async def async_set_native_value(self, value: float) -> None:
+        ensure_car_online(self.coordinator)
         level = int(round(value))
         _LOGGER.debug("SetTargetSoc(%s%%)", level)
         res = await self.coordinator.client.set_target_soc(level)
         if not res.get("ok"):
             _LOGGER.warning("SetTargetSoc failed: %s", res)
         self.coordinator.note_command()
+        raise_if_command_failed(res, f"Charge limit {level} %")

@@ -1,15 +1,22 @@
-"""Volvo AU button platform — force refresh."""
+"""Volvo AU button platform: refresh and car commands."""
 
 from __future__ import annotations
+
+import logging
+from typing import Any
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity
+from .online import ensure_car_online
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -18,7 +25,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([VolvoRefreshButton(coordinator), VolvoFlashButton(coordinator), VolvoHonkFlashButton(coordinator)])
+    async_add_entities([
+        VolvoRefreshButton(coordinator),
+        *(VolvoCommandButton(coordinator, spec) for spec in COMMAND_BUTTONS),
+    ])
 
 
 class VolvoRefreshButton(VolvoEntity, ButtonEntity):
@@ -33,28 +43,57 @@ class VolvoRefreshButton(VolvoEntity, ButtonEntity):
         await self.coordinator.async_request_refresh()
 
 
-class VolvoFlashButton(VolvoEntity, ButtonEntity):
-    _attr_name = "Flash"
-    _attr_icon = "mdi:car-light-high"
+# (unique id suffix, name, icon, what (for messages), client method, keyword arguments).
+# The unique id suffixes are the ones the entities had before 16 Nov 2026: do not change them.
+COMMAND_BUTTONS: list[tuple[str, str, str, str, str, dict[str, Any]]] = [
+    ("flash", "Flash", "mdi:car-light-high", "Flash", "flash", {}),
+    ("honk_flash", "Honk & flash", "mdi:bullhorn", "Honk and flash", "honk_and_flash", {}),
+    ("window_open", "Open windows", "mdi:window-open", "Open windows", "window_control", {"open": True}),
+    ("window_close", "Close windows", "mdi:window-closed", "Close windows", "window_control", {"open": False}),
+    ("engine_remote_start", "Engine remote start", "mdi:engine", "Engine remote start", "engine_remote_start", {}),
+    ("charge_start", "Start charging", "mdi:electric-vehicle-charging", "Start charging", "charge_start", {}),
+    ("charge_stop", "Stop charging", "mdi:electric-vehicle-charging-off", "Stop charging", "charge_stop", {}),
+    ("reduced_alarm", "Reduced alarm", "mdi:alarm-bell", "Lock with reduced alarm", "reduced_alarm", {}),
+    ("tailgate_control", "Tailgate control", "mdi:truck-tailgate", "Open tailgate", "tailgate_control", {"open": True}),
+    ("tailgate_close", "Close tailgate", "mdi:truck-tailgate-closed", "Close tailgate", "tailgate_control", {"open": False}),
+]
 
-    def __init__(self, coordinator: VolvoCoordinator) -> None:
+
+def raise_if_command_failed(res: dict[str, Any], what: str) -> None:
+    """Tell the person when Volvo refused a command or did not answer.
+
+    Before 16 Nov 2026 Flash and Honk & flash ignored the result, and the other buttons only logged it,
+    so a failed press looked like a success.
+    Note: ok here only means that Volvo's server took the request. On 16 Nov 2026 it also said ok while
+    the car was offline, so a press that passes this check can still do nothing on the car.
+    """
+    if res.get("ok"):
+        return
+    if res.get("timeout"):
+        raise HomeAssistantError(
+            f"{what}: Volvo did not answer ({res.get('error')}). The car may be offline; check the Volvo app."
+        )
+    raise HomeAssistantError(
+        f"{what} failed: {res.get('error') or res.get('grpc_message') or res.get('http_status')}"
+    )
+
+
+class VolvoCommandButton(VolvoEntity, ButtonEntity):
+    """One car command. A failure is logged and raised, so the person sees it."""
+
+    def __init__(self, coordinator: VolvoCoordinator, spec: tuple) -> None:
         super().__init__(coordinator)
-        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_flash"
+        suffix, name, icon, self._what, self._method, self._kwargs = spec
+        self._attr_name = name
+        self._attr_icon = icon
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_{suffix}"
 
     async def async_press(self) -> None:
-        await self.coordinator.client.flash()
+        ensure_car_online(self.coordinator)  # raises when the car is known offline; nothing is sent
+        res = await getattr(self.coordinator.client, self._method)(**self._kwargs)
+        if not isinstance(res, dict):
+            res = {"ok": False, "error": f"unexpected reply {res!r}"}
+        if not res.get("ok"):
+            _LOGGER.warning("%s failed: %s", self._what, res)
         self.coordinator.note_command()
-
-
-class VolvoHonkFlashButton(VolvoEntity, ButtonEntity):
-    _attr_name = "Honk & flash"
-    _attr_icon = "mdi:bullhorn"
-
-    def __init__(self, coordinator: VolvoCoordinator) -> None:
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_honk_flash"
-
-    async def async_press(self) -> None:
-        await self.coordinator.client.honk_and_flash()
-        self.coordinator.note_command()
-
+        raise_if_command_failed(res, self._what)

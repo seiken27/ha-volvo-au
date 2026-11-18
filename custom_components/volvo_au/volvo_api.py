@@ -31,6 +31,7 @@ from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
 
 from .const import (
     API_BASE,
+    COMMAND_TIMEOUT_S,
     CLIENT_ID,
     DEFAULT_APP_INSTALLATION_ID,
     TOKEN_URL,
@@ -643,30 +644,73 @@ class VolvoClient:
             }
         )
         loop = asyncio.get_running_loop()
+        # A car command (lock, unlock, climate, ...) normally answers in under 1 s: HTTP 200, one message
+        # (request id, VIN, field 3 = 2) and the reply closes (15 Nov 2026). From 22:11 to 22:28 that evening
+        # Volvo sent nothing at all, even in 120 s, and then recovered; the Volvo app still worked. A timeout now
+        # returns {"ok": False, "timeout": True} and the lock entity reports it, instead of an unexpected error.
+        if path.startswith("/invocation."):
+            timeout = max(timeout, COMMAND_TIMEOUT_S)
+        t0 = time.monotonic()
+        # What arrived so far. _do fills it while it reads, so it is still there when a timeout ends the read.
+        prog: dict[str, Any] = {"http_status": None, "headers": {}, "buf": b"", "times": [], "headers_at": None}
 
-        def _do() -> tuple[int, bytes, dict[str, str]]:
+        def _do() -> None:
             with httpx.Client(http2=True, timeout=timeout) as cli:
-                r = cli.post(API_BASE + path, headers=headers, content=body)
-                return r.status_code, r.content, dict(r.headers)
+                with cli.stream("POST", API_BASE + path, headers=headers, content=body) as r:
+                    prog["http_status"] = r.status_code
+                    prog["headers"] = dict(r.headers)
+                    prog["headers_at"] = round(time.monotonic() - t0, 1)
+                    for chunk in r.iter_bytes():
+                        prog["buf"] += chunk
+                        prog["times"].append(round(time.monotonic() - t0, 1))
 
-        http_status, buf, resp_headers = await loop.run_in_executor(None, _do)
-        grpc_status = resp_headers.get("grpc-status")
-        grpc_message = resp_headers.get("grpc-message")
+        def _frames(buf: bytes) -> list[bytes]:
+            out, i = [], 0
+            while i + 5 <= len(buf):
+                length = struct.unpack(">I", buf[i + 1 : i + 5])[0]
+                if i + 5 + length > len(buf):
+                    break
+                out.append(buf[i + 5 : i + 5 + length])
+                i += 5 + length
+            return out
 
-        frames = []
-        i = 0
-        while i + 5 <= len(buf):
-            length = struct.unpack(">I", buf[i + 1 : i + 5])[0]
-            if i + 5 + length > len(buf):
-                break
-            frames.append(buf[i + 5 : i + 5 + length])
-            i += 5 + length
+        timed_out, error = False, None
+        try:
+            await loop.run_in_executor(None, _do)
+        except httpx.TimeoutException:
+            timed_out = True
+        except httpx.HTTPError as err:
+            error = f"request failed: {type(err).__name__}"
+        waited = round(time.monotonic() - t0, 1)
+        frames = _frames(prog["buf"])
+        http_status = prog["http_status"]
+        grpc_status = prog["headers"].get("grpc-status")
+        grpc_message = prog["headers"].get("grpc-message")
+        if path.startswith("/invocation."):
+            # Kept at INFO while we learn what Volvo sends for a command (15 Nov 2026).
+            _LOGGER.info(
+                "Volvo %s: HTTP %s (headers at %s s), grpc-status %s, frames %s at %s s, %s after %s s",
+                path, http_status, prog["headers_at"], grpc_status, [f.hex() for f in frames], prog["times"],
+                "TIMEOUT" if timed_out else (error or "closed"), waited,
+            )
+        if error:
+            _LOGGER.warning("Volvo %s: %s", path, error)
+            return {"ok": False, "timeout": False, "error": error}
+        if timed_out:
+            _LOGGER.warning(
+                "Volvo %s: the reply did not end within %s s (HTTP %s, %d message(s) received).",
+                path, waited, http_status, len(frames),
+            )
+            return {"ok": False, "timeout": True, "waited_s": waited, "http_status": http_status,
+                    "frame_count": len(frames), "frames": [f.hex() for f in frames],
+                    "error": f"no final answer from the car after {waited:.0f} s"}
         return {
             "ok": http_status == 200 and (grpc_status in (None, "0")),
             "http_status": http_status,
             "grpc_status": grpc_status,
             "grpc_message": grpc_message,
             "frame_count": len(frames),
+            "frames": [f.hex() for f in frames],
         }
 
     # -------- request body templates --------
@@ -935,6 +979,69 @@ class VolvoClient:
         body = self._grpc_frame(outer)
         return await self._grpc_post(
             "/invocation.InvocationService/HonkFlash", body
+        )
+
+    async def window_control(self, open: bool) -> dict[str, Any]:
+        """Control windows (open or close).
+        
+        Sends a WindowControl command to the vehicle.
+        """
+        inner = self._pb_len_delim(1, self.vin.encode("ascii"))
+        mode = b"\x10\x01" if open else b"\x10\x02"  # f2 enum: 1=OPEN_ALL, 2=CLOSE_ALL
+        outer = self._pb_len_delim(1, inner) + mode
+        body = self._grpc_frame(outer)
+        return await self._grpc_post(
+            "/invocation.InvocationService/WindowControl", body
+        )
+
+    async def engine_remote_start(self) -> dict[str, Any]:
+        """Start engine remote start via EngineRemoteStartService."""
+        inner = self._pb_len_delim(1, self.vin.encode("ascii"))
+        outer = self._pb_len_delim(1, inner) + b"\x10\x01"  # f2 varint = 1
+        body = self._grpc_frame(outer)
+        return await self._grpc_post(
+            "/invocation.InvocationService/EngineStart", body
+        )
+
+    async def reduced_alarm(self) -> dict[str, Any]:
+        """Lock with reduced alarm level (CarLockRequest alarm_level=2).
+        
+        Sends a Lock command with ALARM_LEVEL_REDUCED (2) via CarLockRequest.
+        """
+        # CarLockRequest: field 1=feedback (FEEDBACK_IDLE=1), field 2=alarm_level (ALARM_LEVEL_REDUCED=2)
+        # feedback=1 (varint): tag=0x08, value=0x01
+        # alarm_level=2 (varint): tag=0x10, value=0x02
+        car_lock_req = b"\x08\x01\x10\x02"
+        inner = self._pb_len_delim(1, self.vin.encode("ascii"))
+        outer = self._pb_len_delim(1, inner) + self._pb_len_delim(2, car_lock_req)
+        body = self._grpc_frame(outer)
+        return await self._grpc_post(
+            "/invocation.InvocationService/Lock", body
+        )
+
+    async def tailgate_control(self, open: bool) -> dict[str, Any]:
+        """Control the tailgate (open or close).
+        
+        Sends a TailgateControl command to the vehicle.
+        """
+        inner = self._pb_len_delim(1, self.vin.encode("ascii"))
+        mode = b"\x10\x01" if open else b"\x10\x02"  # f2 enum: 1=OPEN_TAILGATE, 2=CLOSE_TAILGATE
+        outer = self._pb_len_delim(1, inner) + mode
+        body = self._grpc_frame(outer)
+        return await self._grpc_post(
+            "/invocation.InvocationService/TailgateControl", body
+        )
+
+    async def charge_start(self) -> dict[str, Any]:
+        """Start charging the vehicle (ChargeNowService/StartOverrideChargeTimer)."""
+        return await self._vin_only_grpc(
+            "/chronos.services.v1.ChargeNowService/StartOverrideChargeTimer"
+        )
+
+    async def charge_stop(self) -> dict[str, Any]:
+        """Stop charging the vehicle (ChargeNowService/StopOverrideChargeTimer)."""
+        return await self._vin_only_grpc(
+            "/chronos.services.v1.ChargeNowService/StopOverrideChargeTimer"
         )
 
     async def honk_and_flash(self) -> dict[str, Any]:

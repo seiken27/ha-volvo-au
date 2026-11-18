@@ -27,6 +27,8 @@ Personal project. Use at your own risk. Reverse-engineered from the iOS app; Vol
 - Exterior temperature (via Volvo's weather service)
 - Usage mode (in-use / abandoned)
 - Software version (OTA)
+- Online: whether the car can receive commands now (from Volvo's availability reply), with the last time the car reported
+- Connection: the same in one plain sentence with the reason, e.g. "Offline since 19:32: the car has no mobile internet (weak signal?). Commands cannot reach the car until it is online again." (handy for voice assistants)
 
 ### Write
 
@@ -39,6 +41,13 @@ Personal project. Use at your own risk. Reverse-engineered from the iOS app; Vol
 - Air purification start / stop
 - Charge schedule: enable/disable, start time, end time
 - Charge current limit
+- Open / close all windows
+- Open / close tailgate
+- Engine remote start (on an electric car this starts cabin climate)
+- Start / stop charging
+- Lock with reduced alarm
+
+Every command shows an error in Home Assistant when Volvo refuses it or does not answer, and is refused before it is sent while Volvo reports the car offline. (Volvo's server answers HTTP 200 to a command even when the car is offline, so without this check a command could silently do nothing.)
 
 ### Adaptive polling
 
