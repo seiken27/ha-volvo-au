@@ -32,7 +32,7 @@ from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity, async_gate_combustion_only
 from .online import car_status, status_text
-from .powertrain import drivetrain_type, engine_type
+from .powertrain import battery_capacity_kwh, drivetrain_type, engine_type
 
 
 def _path(snap: dict[str, Any], *keys: str) -> Any:
@@ -291,7 +291,7 @@ async def async_setup_entry(
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(async_gate_combustion_only(hass, coordinator, "sensor", [VolvoSensor(coordinator, d) for d in SENSORS]))
-    async_add_entities([VolvoLocationAddress(coordinator), VolvoSoftwareVersion(coordinator), VolvoVin(coordinator), VolvoLastSeen(coordinator), VolvoConnection(coordinator)])
+    async_add_entities([VolvoLocationAddress(coordinator), VolvoSoftwareVersion(coordinator), VolvoVin(coordinator), VolvoVehicleInfo(coordinator), VolvoLastSeen(coordinator), VolvoConnection(coordinator)])
 
 
 class VolvoSensor(VolvoEntity, SensorEntity):
@@ -509,6 +509,38 @@ class VolvoVin(VolvoEntity, SensorEntity):
             "drivetrain": drivetrain_type(c.car_info),
         }
         return {k: v for k, v in attrs.items() if v}
+
+
+class VolvoVehicleInfo(VolvoEntity, SensorEntity):
+    """The car's raw record from /car-information/car, as attributes. Disabled by default.
+
+    For checking what a car reports (powertrain, capabilities, what a performance upgrade changes)
+    without signing in again outside Home Assistant. The VIN is left out.
+    """
+
+    _attr_name = "Vehicle Info"
+    _attr_icon = "mdi:text-box-search-outline"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+    _unrecorded_attributes = frozenset({"car"})
+
+    def __init__(self, coordinator: VolvoCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_vehicle_info"
+
+    @property
+    def native_value(self) -> str:
+        return "ok" if self.coordinator.car_info else "unavailable"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        car = {k: v for k, v in (self.coordinator.car_info or {}).items() if k != "vin"}
+        return {
+            "car": car,
+            "powertrain": engine_type(self.coordinator.car_info),
+            "drivetrain": drivetrain_type(self.coordinator.car_info),
+            "battery_capacity_kwh": battery_capacity_kwh(self.coordinator.car_info),
+        }
 
 
 class VolvoSoftwareVersion(VolvoEntity, SensorEntity):
