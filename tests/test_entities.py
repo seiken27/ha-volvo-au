@@ -289,8 +289,8 @@ def test_tyre_warning_combines_wheels_and_lists_pressures(monkeypatch):
     snap = {"health": {"health": health}}
     assert volvo.binary_sensor._any_tyre_warning(snap) is True
     attrs = volvo.binary_sensor._tyre_attributes(snap)
-    assert attrs["front_left_warning"] is False
-    assert attrs["front_right_warning"] is True
+    assert attrs["front_left_warning"] == "ok"
+    assert attrs["front_right_warning"] == "very_low"
     assert attrs["front_left_pressure_kpa"] == 250
     assert "rear_left_warning" not in attrs
 
@@ -299,3 +299,43 @@ def test_tyre_warning_unknown_without_data(monkeypatch):
     volvo = load_volvo(monkeypatch, FakeRegistry())
     assert volvo.binary_sensor._any_tyre_warning({"health": {"health": {}}}) is None
     assert volvo.binary_sensor._any_tyre_warning({}) is None
+
+
+def test_tyre_attributes_need_reported_pressures(monkeypatch):
+    volvo = load_volvo(monkeypatch, FakeRegistry())
+    snap = {"health": {"health": {"frontLeftTyrePressureWarning": "TYRE_PRESSURE_WARNING_LOW_PRESSURE"}}}
+    assert volvo.binary_sensor._tyre_attributes(snap) == {}
+
+
+def test_service_attributes_grade_the_warning(monkeypatch):
+    volvo = load_volvo(monkeypatch, FakeRegistry())
+    grade = volvo.powertrain.service_attributes
+    assert grade("SERVICE_WARNING_NO_WARNING") == {}
+    assert grade(None) == {}
+    assert grade("SERVICE_WARNING_REGULAR_MAINTENANCE_ALMOST_TIME") == {
+        "service_urgency": "almost_due",
+        "service_reason": "regular",
+    }
+    assert grade("SERVICE_WARNING_DISTANCE_DRIVEN_OVERDUE") == {
+        "service_urgency": "overdue",
+        "service_reason": "distance",
+    }
+
+
+def test_command_refusal_is_read_from_the_reply(monkeypatch):
+    # volvo_api needs network libraries the tests do not load, so run just the reply decoder from its source
+    from pathlib import Path
+
+    source = (Path(__file__).parent.parent / "custom_components/volvo_au/volvo_api.py").read_text()
+    start = source.index("COMMAND_STATUS_REASONS")
+    end = source.index("# ----", start)
+    namespace = {"Any": object}
+    exec(source[start:end], namespace)
+    refusal = namespace["command_refusal"]
+    # field 3 (status) = 9 and field 4 (message) = "x", on its own and wrapped in field 1
+    inner = b"\x18\x09\x22\x01x"
+    assert "privacy mode" in refusal([inner])
+    assert refusal([b"\x0a" + bytes([len(inner)]) + inner]).endswith("(x)")
+    assert refusal([b"\x18\x06"]) is None  # success
+    assert refusal([b"\x18\x02"]) is None  # seen on commands that worked
+    assert refusal([]) is None

@@ -276,3 +276,43 @@ def sections_without_data(snapshot) -> frozenset:
         if not has_data(section):
             empty.add(name)
     return frozenset(empty)
+
+
+def service_attributes(warning: Any) -> dict[str, str]:
+    """How urgent a service warning is and what triggers it (empty while there is no warning).
+
+    ``service_urgency``: ``almost_due``, ``due`` or ``overdue``; ``service_reason``: ``regular``, ``engine_hours`` or
+    ``distance``. Built from the warning's name (for example ``SERVICE_WARNING_DISTANCE_DRIVEN_ALMOST_TIME``).
+    """
+    name = warning.upper() if isinstance(warning, str) else ""
+    if not name or name.endswith(("_UNSPECIFIED", "_UNKNOWN", "_NO_WARNING", "_UNKNOWN_WARNING")):
+        return {}
+    if "ALMOST" in name:
+        urgency = "almost_due"
+    elif "OVERDUE" in name:
+        urgency = "overdue"
+    elif name.endswith("_TIME"):
+        urgency = "due"
+    else:
+        return {}
+    if "ENGINE_HOURS" in name:
+        return {"service_urgency": urgency, "service_reason": "engine_hours"}
+    if "DISTANCE" in name:
+        return {"service_urgency": urgency, "service_reason": "distance"}
+    if "REGULAR" in name:
+        return {"service_urgency": urgency, "service_reason": "regular"}
+    return {"service_urgency": urgency}
+
+
+def tyre_grade(warning: Any) -> str | None:
+    """``ok``, ``very_low``, ``low`` or ``high`` from a tyre pressure warning value."""
+    name = warning.upper() if isinstance(warning, str) else ""
+    for suffix, grade in (
+        ("NO_WARNING", "ok"),
+        ("VERY_LOW_PRESSURE", "very_low"),
+        ("LOW_PRESSURE", "low"),
+        ("HIGH_PRESSURE", "high"),
+    ):
+        if name.endswith(suffix):
+            return grade
+    return None

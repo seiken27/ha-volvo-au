@@ -286,6 +286,86 @@ def _parse_software_info_frame(frame: bytes) -> dict[str, Any] | None:
     return info or None
 
 
+# What the car's final command answer means, in words for a person (enum values from the Volvo app).
+COMMAND_STATUS_REASONS: dict[int, str] = {
+    0: "an unknown error",
+    5: "the car did not receive the command in time",
+    7: "the car did not answer in time",
+    8: "the car reported an unknown error",
+    9: "privacy mode is on in the car, which blocks remote commands",
+    10: "the car is not in a state that allows this command (for example it is being driven)",
+    11: "the car rejected this particular command",
+    12: "another command is still in progress",
+}
+# 2 (car offline) is left out on purpose: that value was seen in answers to commands that worked (15 Nov 2026).
+
+
+def _proto_fields(buf: bytes) -> list[tuple[int, int, Any]]:
+    """Top-level (field, wire type, value) triples of a protobuf message; stops at anything malformed."""
+    out: list[tuple[int, int, Any]] = []
+    p = 0
+
+    def varint() -> int:
+        nonlocal p
+        r = s = 0
+        while True:
+            b = buf[p]
+            p += 1
+            r |= (b & 0x7F) << s
+            if not b & 0x80:
+                return r
+            s += 7
+
+    try:
+        while p < len(buf):
+            tag = varint()
+            fld, wt = tag >> 3, tag & 7
+            if wt == 0:
+                out.append((fld, wt, varint()))
+            elif wt == 2:
+                ln = varint()
+                out.append((fld, wt, buf[p : p + ln]))
+                p += ln
+            elif wt == 1:
+                out.append((fld, wt, buf[p : p + 8]))
+                p += 8
+            elif wt == 5:
+                out.append((fld, wt, buf[p : p + 4]))
+                p += 4
+            else:
+                break
+    except IndexError:
+        pass
+    return out
+
+
+def command_refusal(frames: list[bytes]) -> str | None:
+    """Why the car refused a command, from the invocation reply (None when it did not refuse).
+
+    The reply is an invocation response (field 3 = status, field 4 = message), either on its own or wrapped
+    in field 1. Only statuses in COMMAND_STATUS_REASONS count as a refusal.
+    """
+    for frame in reversed(frames):
+        fields = _proto_fields(frame)
+        for _, wt, val in fields:
+            if wt == 2 and not any(f == 3 and w == 0 for f, w, _ in fields):
+                inner = _proto_fields(val)
+                if any(f == 3 and w == 0 for f, w, _ in inner):
+                    fields = inner
+                    break
+        status = next((v for f, w, v in fields if f == 3 and w == 0), None)
+        if status is None:
+            continue
+        reason = COMMAND_STATUS_REASONS.get(status)
+        if reason is None:
+            return None
+        message = next((v for f, w, v in fields if f == 4 and w == 2), b"")
+        text = message.decode("utf-8", "replace").strip() if message else ""
+        return f"{reason} ({text})" if text else reason
+    return None
+
+
+
 # ---------------------------------------------------------------------------
 # DPoP helpers (sync; cheap, no I/O)
 # ---------------------------------------------------------------------------
@@ -739,8 +819,12 @@ class VolvoClient:
             return {"ok": False, "timeout": True, "waited_s": waited, "http_status": http_status,
                     "frame_count": len(frames), "frames": [f.hex() for f in frames],
                     "error": f"no final answer from the car after {waited:.0f} s"}
+        refusal = command_refusal(frames) if path.startswith("/invocation.") else None
+        if refusal:
+            _LOGGER.warning("Volvo %s: the car refused the command: %s", path, refusal)
         return {
-            "ok": http_status == 200 and (grpc_status in (None, "0")),
+            "ok": http_status == 200 and (grpc_status in (None, "0")) and not refusal,
+            **({"error": refusal} if refusal else {}),
             "http_status": http_status,
             "grpc_status": grpc_status,
             "grpc_message": grpc_message,

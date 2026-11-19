@@ -20,7 +20,7 @@ from .const import DOMAIN
 from .coordinator import VolvoCoordinator
 from .entity import VolvoEntity, async_gate_unsupported, async_remove_registered_entities
 from .online import car_status
-from .powertrain import in_use, light_status, tyre_pressure_kpa
+from .powertrain import in_use, light_status, service_attributes, tyre_grade, tyre_pressure_kpa
 
 
 def _ext(snap: dict[str, Any], key: str) -> str | None:
@@ -122,17 +122,23 @@ def _any_tyre_warning(snap: dict[str, Any]) -> bool | None:
 
 
 def _tyre_attributes(snap: dict[str, Any]) -> dict[str, Any]:
-    """Per-wheel warning, plus the pressure (kPa) for wheels that report one."""
+    """Per-wheel warning grade and pressure (kPa); only for cars that report individual pressures."""
     health = (snap.get("health") or {}).get("health")
+    pressures = {wheel: tyre_pressure_kpa(health, wheel) for wheel, _ in _TYRE_WHEELS}
+    if not any(pressures.values()):
+        return {}
     attrs: dict[str, Any] = {}
     for wheel, prefix in _TYRE_WHEELS:
-        warning = _warning(snap, f"{prefix}TyrePressureWarning")
-        if warning is not None:
-            attrs[f"{wheel}_warning"] = warning
-        kpa = tyre_pressure_kpa(health, wheel)
-        if kpa is not None:
-            attrs[f"{wheel}_pressure_kpa"] = kpa
+        grade = tyre_grade((health or {}).get(f"{prefix}TyrePressureWarning"))
+        if grade is not None:
+            attrs[f"{wheel}_warning"] = grade
+        if pressures[wheel] is not None:
+            attrs[f"{wheel}_pressure_kpa"] = pressures[wheel]
     return attrs
+
+
+def _service_attributes(snap: dict[str, Any]) -> dict[str, Any]:
+    return service_attributes(((snap.get("health") or {}).get("health") or {}).get("serviceWarning"))
 
 
 def _in_use(snap: dict[str, Any]) -> bool | None:
@@ -251,6 +257,7 @@ DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
         icon_off="mdi:car-wrench",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda s: _warning(s, "serviceWarning"),
+        attrs_fn=_service_attributes,
     ),
     VolvoBinaryDescription(
         key="brake_fluid_warning",
