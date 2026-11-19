@@ -277,3 +277,25 @@ def test_connection_state_is_short_and_has_no_clock_time(monkeypatch):
     assert online.status_text(status(False, "UNAVAILABLE_REASON_NO_INTERNET")) == "Offline: no internet"
     assert online.status_text(status(False)) == "Offline: no connection"
     assert online.status_detail(status(False, "UNAVAILABLE_REASON_CAR_IN_USE")).startswith("The car is in use. Commands cannot reach")
+
+
+def test_tyre_warning_combines_wheels_and_lists_pressures(monkeypatch):
+    volvo = load_volvo(monkeypatch, FakeRegistry())
+    health = {
+        "frontLeftTyrePressureWarning": "TYRE_PRESSURE_WARNING_NO_WARNING",
+        "frontRightTyrePressureWarning": "TYRE_PRESSURE_WARNING_VERY_LOW_PRESSURE",
+        "frontLeftTyrePressureKpa": 250,
+    }
+    snap = {"health": {"health": health}}
+    assert volvo.binary_sensor._any_tyre_warning(snap) is True
+    attrs = volvo.binary_sensor._tyre_attributes(snap)
+    assert attrs["front_left_warning"] is False
+    assert attrs["front_right_warning"] is True
+    assert attrs["front_left_pressure_kpa"] == 250
+    assert "rear_left_warning" not in attrs
+
+
+def test_tyre_warning_unknown_without_data(monkeypatch):
+    volvo = load_volvo(monkeypatch, FakeRegistry())
+    assert volvo.binary_sensor._any_tyre_warning({"health": {"health": {}}}) is None
+    assert volvo.binary_sensor._any_tyre_warning({}) is None

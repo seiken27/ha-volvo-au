@@ -18,9 +18,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
-from .entity import VolvoEntity, async_gate_unsupported
+from .entity import VolvoEntity, async_gate_unsupported, async_remove_registered_entities
 from .online import car_status
-from .powertrain import in_use, light_status
+from .powertrain import in_use, light_status, tyre_pressure_kpa
 
 
 def _ext(snap: dict[str, Any], key: str) -> str | None:
@@ -106,6 +106,35 @@ def _light_attributes(snap: dict[str, Any]) -> dict[str, Any]:
     return light_status(_health_lights(snap))[1]
 
 
+_TYRE_WHEELS = (
+    ("front_left", "frontLeft"),
+    ("front_right", "frontRight"),
+    ("rear_left", "rearLeft"),
+    ("rear_right", "rearRight"),
+)
+
+
+def _any_tyre_warning(snap: dict[str, Any]) -> bool | None:
+    """On when any wheel reports a warning; unknown when none reports anything."""
+    states = [_warning(snap, f"{prefix}TyrePressureWarning") for _, prefix in _TYRE_WHEELS]
+    known = [s for s in states if s is not None]
+    return any(known) if known else None
+
+
+def _tyre_attributes(snap: dict[str, Any]) -> dict[str, Any]:
+    """Per-wheel warning, plus the pressure (kPa) for wheels that report one."""
+    health = (snap.get("health") or {}).get("health")
+    attrs: dict[str, Any] = {}
+    for wheel, prefix in _TYRE_WHEELS:
+        warning = _warning(snap, f"{prefix}TyrePressureWarning")
+        if warning is not None:
+            attrs[f"{wheel}_warning"] = warning
+        kpa = tyre_pressure_kpa(health, wheel)
+        if kpa is not None:
+            attrs[f"{wheel}_pressure_kpa"] = kpa
+    return attrs
+
+
 def _in_use(snap: dict[str, Any]) -> bool | None:
     """True while the car is being driven or Volvo says it is unavailable because it is in use."""
     avail = (snap.get("availability") or {}).get("availability") or {}
@@ -117,30 +146,40 @@ class VolvoBinaryDescription(BinarySensorEntityDescription):
     value_fn: Callable[[dict[str, Any]], bool | None]
     attrs_fn: Callable[[dict[str, Any]], dict[str, Any]] | None = None
     requires_capability: str | None = None
+    icon_on: str | None = None
+    icon_off: str | None = None
 
 
 DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
     VolvoBinaryDescription(
         key="door_fl",
         translation_key="door_fl",
+        icon_on="mdi:car-door-lock-open",
+        icon_off="mdi:car-door",
         device_class=BinarySensorDeviceClass.DOOR,
         value_fn=lambda s: _open(s, "frontLeftDoor"),
     ),
     VolvoBinaryDescription(
         key="door_fr",
         translation_key="door_fr",
+        icon_on="mdi:car-door-lock-open",
+        icon_off="mdi:car-door",
         device_class=BinarySensorDeviceClass.DOOR,
         value_fn=lambda s: _open(s, "frontRightDoor"),
     ),
     VolvoBinaryDescription(
         key="door_rl",
         translation_key="door_rl",
+        icon_on="mdi:car-door-lock-open",
+        icon_off="mdi:car-door",
         device_class=BinarySensorDeviceClass.DOOR,
         value_fn=lambda s: _open(s, "rearLeftDoor"),
     ),
     VolvoBinaryDescription(
         key="door_rr",
         translation_key="door_rr",
+        icon_on="mdi:car-door-lock-open",
+        icon_off="mdi:car-door",
         device_class=BinarySensorDeviceClass.DOOR,
         value_fn=lambda s: _open(s, "rearRightDoor"),
     ),
@@ -208,12 +247,16 @@ DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
     VolvoBinaryDescription(
         key="service_warning",
         translation_key="service_warning",
+        icon_on="mdi:alert-circle",
+        icon_off="mdi:car-wrench",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda s: _warning(s, "serviceWarning"),
     ),
     VolvoBinaryDescription(
         key="brake_fluid_warning",
         translation_key="brake_fluid_warning",
+        icon_on="mdi:alert-circle",
+        icon_off="mdi:car-brake-fluid-level",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda s: _warning(s, "brakeFluidLevelWarning"),
     ),
@@ -232,40 +275,26 @@ DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
     VolvoBinaryDescription(
         key="washer_fluid_warning",
         translation_key="washer_fluid_warning",
+        icon_on="mdi:alert-circle",
+        icon_off="mdi:wiper-wash",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda s: _warning(s, "washerFluidLevelWarning"),
     ),
     VolvoBinaryDescription(
-        key="tyre_fl_warning",
+        key="tyre_warning",
         requires_capability="reportsTyrePressure",
-        translation_key="tyre_fl_warning",
+        translation_key="tyre_warning",
         device_class=BinarySensorDeviceClass.PROBLEM,
-        value_fn=lambda s: _warning(s, "frontLeftTyrePressureWarning"),
-    ),
-    VolvoBinaryDescription(
-        key="tyre_fr_warning",
-        requires_capability="reportsTyrePressure",
-        translation_key="tyre_fr_warning",
-        device_class=BinarySensorDeviceClass.PROBLEM,
-        value_fn=lambda s: _warning(s, "frontRightTyrePressureWarning"),
-    ),
-    VolvoBinaryDescription(
-        key="tyre_rl_warning",
-        requires_capability="reportsTyrePressure",
-        translation_key="tyre_rl_warning",
-        device_class=BinarySensorDeviceClass.PROBLEM,
-        value_fn=lambda s: _warning(s, "rearLeftTyrePressureWarning"),
-    ),
-    VolvoBinaryDescription(
-        key="tyre_rr_warning",
-        requires_capability="reportsTyrePressure",
-        translation_key="tyre_rr_warning",
-        device_class=BinarySensorDeviceClass.PROBLEM,
-        value_fn=lambda s: _warning(s, "rearRightTyrePressureWarning"),
+        icon_off="mdi:car-tire-alert",
+        icon_on="mdi:alert-circle",
+        value_fn=_any_tyre_warning,
+        attrs_fn=_tyre_attributes,
     ),
     VolvoBinaryDescription(
         key="low_voltage_battery_warning",
         translation_key="low_voltage_battery_warning",
+        icon_on="mdi:battery-alert",
+        icon_off="mdi:car-battery",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda s: _warning(s, "lowVoltageBatteryWarning"),
     ),
@@ -273,6 +302,8 @@ DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
         key="light_warning",
         requires_capability="reportsLightWarnings",
         translation_key="light_warning",
+        icon_on="mdi:alert-circle",
+        icon_off="mdi:car-light-alert",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=_any_light_warning,
         attrs_fn=_light_attributes,
@@ -292,6 +323,12 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
+    # The four per-wheel tyre warnings became one Tyre warning with per-wheel attributes (19 Nov 2026).
+    async_remove_registered_entities(
+        hass,
+        "binary_sensor",
+        [f"{DOMAIN}_{coordinator.client.vin}_tyre_{w}_warning" for w in ("fl", "fr", "rl", "rr")],
+    )
     entities = [VolvoBinarySensor(coordinator, d) for d in DESCRIPTIONS]
     if has_sunroof(coordinator.data) is False:
         # Only some cars (for example the XC40) have a sunroof. Do not create the sensor, and remove
@@ -324,6 +361,14 @@ class VolvoBinarySensor(VolvoEntity, BinarySensorEntity):
             return self.entity_description.value_fn(self.coordinator.data or {})
         except Exception:  # noqa: BLE001
             return None
+
+    @property
+    def icon(self) -> str | None:
+        """Follow the state when the description has state icons (an unknown state shows the off icon)."""
+        d = self.entity_description
+        if d.icon_on is None and d.icon_off is None:
+            return super().icon
+        return d.icon_on if self.is_on else d.icon_off
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:

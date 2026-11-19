@@ -88,7 +88,6 @@ class VolvoTailgateLock(VolvoEntity, LockEntity):
 
     _attr_translation_key = "tailgate_lock"
     requires_capability = "supportsRemoteTrunkUnlock"
-    _attr_icon = "mdi:car-back"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
         super().__init__(coordinator)

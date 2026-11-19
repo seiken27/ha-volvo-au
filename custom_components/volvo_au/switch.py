@@ -87,7 +87,7 @@ class VolvoChargeScheduleSwitch(VolvoEntity, SwitchEntity):
     _attr_translation_key = "charging_schedule"
     requires_capability = "supportsGlobalChargeTimer"
     requires_data = "global_charge_timer"
-    _attr_icon = "mdi:calendar-clock"
+    _attr_icon = "mdi:clock-outline"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
         super().__init__(coordinator)
@@ -129,7 +129,7 @@ class VolvoClimatizationSwitch(VolvoEntity, SwitchEntity):
     _attr_translation_key = "climatization"
     requires_capability = "supportsParkingClimatization"
     requires_data = "parking_climatization"
-    _attr_icon = "mdi:car-defrost-front"
+    _attr_icon = "mdi:air-conditioner"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
         super().__init__(coordinator)

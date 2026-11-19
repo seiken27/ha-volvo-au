@@ -38,7 +38,6 @@ async def async_setup_entry(
 
 class VolvoScheduleTime(VolvoEntity, TimeEntity):
     _attr_entity_category = EntityCategory.CONFIG
-    _attr_icon = "mdi:clock-outline"
     # The same feature as the Charging Schedule switch.
     requires_capability = "supportsGlobalChargeTimer"
     requires_data = "global_charge_timer"
@@ -46,6 +45,7 @@ class VolvoScheduleTime(VolvoEntity, TimeEntity):
     def __init__(self, coordinator: VolvoCoordinator, *, kind: str) -> None:
         super().__init__(coordinator)
         self._kind = kind  # "start" or "stop"
+        self._attr_icon = "mdi:clock-start" if kind == "start" else "mdi:clock-end"
         self._attr_translation_key = f"charge_schedule_{kind}"
         self._attr_unique_id = (
             f"{DOMAIN}_{coordinator.client.vin}_charge_schedule_{kind}"

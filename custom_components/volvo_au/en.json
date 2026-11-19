@@ -59,22 +59,22 @@
         "name": "Alarm triggered"
       },
       "brake_fluid_warning": {
-        "name": "Brake fluid low"
+        "name": "Brake fluid"
       },
       "charge_port": {
         "name": "Charge port"
       },
       "door_fl": {
-        "name": "Front-left door"
+        "name": "Front left door"
       },
       "door_fr": {
-        "name": "Front-right door"
+        "name": "Front right door"
       },
       "door_rl": {
-        "name": "Rear-left door"
+        "name": "Rear left door"
       },
       "door_rr": {
-        "name": "Rear-right door"
+        "name": "Rear right door"
       },
       "engine_coolant_warning": {
         "name": "Engine coolant low"
@@ -89,7 +89,7 @@
         "name": "Light status"
       },
       "low_voltage_battery_warning": {
-        "name": "12V battery low"
+        "name": "12V battery"
       },
       "oil_level_warning": {
         "name": "Oil level low"
@@ -101,7 +101,7 @@
         "name": "Plugged in"
       },
       "service_warning": {
-        "name": "Service warning"
+        "name": "Service required"
       },
       "sunroof": {
         "name": "Sunroof"
@@ -109,32 +109,23 @@
       "tailgate": {
         "name": "Tailgate"
       },
-      "tyre_fl_warning": {
-        "name": "Tyre front-left pressure"
-      },
-      "tyre_fr_warning": {
-        "name": "Tyre front-right pressure"
-      },
-      "tyre_rl_warning": {
-        "name": "Tyre rear-left pressure"
-      },
-      "tyre_rr_warning": {
-        "name": "Tyre rear-right pressure"
-      },
       "washer_fluid_warning": {
-        "name": "Washer fluid low"
+        "name": "Washer fluid"
       },
       "window_fl": {
-        "name": "Front-left window"
+        "name": "Front left window"
       },
       "window_fr": {
-        "name": "Front-right window"
+        "name": "Front right window"
       },
       "window_rl": {
-        "name": "Rear-left window"
+        "name": "Rear left window"
       },
       "window_rr": {
-        "name": "Rear-right window"
+        "name": "Rear right window"
+      },
+      "tyre_warning": {
+        "name": "Tyre warning"
       }
     },
     "button": {
@@ -148,16 +139,16 @@
         "name": "Engine remote start"
       },
       "flash": {
-        "name": "Flash"
+        "name": "Flash lights"
       },
       "honk": {
         "name": "Honk"
       },
       "honk_flash": {
-        "name": "Honk & flash"
+        "name": "Honk and flash"
       },
       "reduced_alarm": {
-        "name": "Reduced alarm"
+        "name": "Lock with reduced alarm"
       },
       "refresh": {
         "name": "Refresh"
@@ -190,7 +181,7 @@
     },
     "number": {
       "charge_current_limit": {
-        "name": "Charge current limit"
+        "name": "Charging amp limit"
       },
       "target_soc": {
         "name": "Target SoC"
@@ -204,7 +195,7 @@
         "name": "Cabin air quality index"
       },
       "amp_limit": {
-        "name": "Charge current limit"
+        "name": "Charging amp limit"
       },
       "avg_consumption": {
         "name": "Average consumption"
@@ -213,10 +204,10 @@
         "name": "Average speed"
       },
       "battery_capacity": {
-        "name": "Battery Capacity"
+        "name": "Battery capacity"
       },
       "battery_soc": {
-        "name": "Battery"
+        "name": "State of charge"
       },
       "charger_connection": {
         "name": "Charger connection",
@@ -261,7 +252,7 @@
         "name": "Engine hours to service"
       },
       "exterior_temperature": {
-        "name": "Exterior temperature"
+        "name": "Outside temperature"
       },
       "last_seen": {
         "name": "Last seen"
@@ -279,25 +270,25 @@
         "name": "Software version"
       },
       "time_to_full": {
-        "name": "Time to full"
+        "name": "Time to full charge"
       },
       "trip_auto_km": {
-        "name": "Trip (auto)"
+        "name": "Trip meter (auto)"
       },
       "trip_manual_km": {
-        "name": "Trip (manual)"
+        "name": "Trip meter (manual)"
       },
       "tyre_front_left_pressure": {
-        "name": "Tyre front-left pressure"
+        "name": "Front left tyre pressure"
       },
       "tyre_front_right_pressure": {
-        "name": "Tyre front-right pressure"
+        "name": "Front right tyre pressure"
       },
       "tyre_rear_left_pressure": {
-        "name": "Tyre rear-left pressure"
+        "name": "Rear left tyre pressure"
       },
       "tyre_rear_right_pressure": {
-        "name": "Tyre rear-right pressure"
+        "name": "Rear right tyre pressure"
       },
       "usage_mode": {
         "name": "Usage mode",
@@ -312,7 +303,7 @@
         }
       },
       "vehicle_info": {
-        "name": "Vehicle Info"
+        "name": "Vehicle info"
       },
       "vin": {
         "name": "VIN"
@@ -329,7 +320,7 @@
         "name": "Charging schedule"
       },
       "climatization": {
-        "name": "Climatization"
+        "name": "Climate"
       }
     },
     "time": {

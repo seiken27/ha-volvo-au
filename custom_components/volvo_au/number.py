@@ -126,7 +126,7 @@ class VolvoClimateTemperature(VolvoEntity, NumberEntity, RestoreEntity):
 
     _attr_entity_category = EntityCategory.CONFIG
     _attr_translation_key = "climate_temperature"
-    _attr_icon = "mdi:thermometer"
+    _attr_icon = "mdi:thermometer-auto"
     _attr_native_unit_of_measurement = "\u00b0C"
     _attr_native_step = 0.5
     _attr_mode = NumberMode.BOX

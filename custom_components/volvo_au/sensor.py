@@ -117,6 +117,7 @@ def _tyre(wheel: str, label: str) -> VolvoSensorDescription:
         key=f"tyre_{wheel}_pressure",
         requires_capability="reportsAbsoluteTyrePressure",
         translation_key=f"tyre_{wheel}_pressure",
+        icon="mdi:tire",
         native_unit_of_measurement=UnitOfPressure.KPA,
         suggested_unit_of_measurement=UnitOfPressure.PSI,
         device_class=SensorDeviceClass.PRESSURE,
@@ -159,7 +160,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     VolvoSensorDescription(
         key="charging_status",
         translation_key="charging_status",
-        icon="mdi:ev-station",
+        icon="mdi:power-plug-battery",
         device_class=SensorDeviceClass.ENUM,
         options=list(CHARGING_STATUS_OPTIONS),
         value_fn=lambda s: _enum_state(
@@ -173,7 +174,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     VolvoSensorDescription(
         key="charger_connection",
         translation_key="charger_connection",
-        icon="mdi:power-plug",
+        icon="mdi:ev-plug-type2",
         device_class=SensorDeviceClass.ENUM,
         options=list(CHARGER_CONNECTION_OPTIONS),
         value_fn=lambda s: _enum_state(
@@ -212,6 +213,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
         key="avg_consumption",
         requires_capability="reportsAvgElectricConsumption",
         translation_key="avg_consumption",
+        icon="mdi:lightning-bolt",
         native_unit_of_measurement="kWh/100km",
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda s: _path(s, "battery", "battery", "averageEnergyConsumptionKwhPer100Km"),
@@ -261,7 +263,6 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
         key="usage_mode",
         translation_key="usage_mode",
         entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:car-info",
         device_class=SensorDeviceClass.ENUM,
         options=list(USAGE_MODE_OPTIONS),
         value_fn=lambda s: _enum_state(
@@ -283,6 +284,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     VolvoSensorDescription(
         key="distance_to_service",
         translation_key="distance_to_service",
+        icon="mdi:wrench-clock",
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         suggested_display_precision=0,
         device_class=SensorDeviceClass.DISTANCE,
@@ -292,6 +294,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     VolvoSensorDescription(
         key="days_to_service",
         translation_key="days_to_service",
+        icon="mdi:wrench-clock",
         native_unit_of_measurement=UnitOfTime.DAYS,
         device_class=SensorDeviceClass.DURATION,
         state_class=SensorStateClass.MEASUREMENT,
@@ -300,6 +303,7 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
     VolvoSensorDescription(
         key="engine_hours_to_service",
         translation_key="engine_hours_to_service",
+        icon="mdi:engine",
         entity_category=EntityCategory.DIAGNOSTIC,
         requires_combustion_engine=True,
         native_unit_of_measurement=UnitOfTime.HOURS,
@@ -313,10 +317,10 @@ SENSORS: tuple[VolvoSensorDescription, ...] = (
         requires_data="pre_cleaning",
         requires_capability="supportsAirPurificationInternalMeasurement",
         translation_key="air_quality_index",
+        device_class=SensorDeviceClass.PM25,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda s: _path(
-            s, "pre_cleaning", "preCleaning", "measuredAirQualityIndex"
-        ),
+        native_unit_of_measurement="µg/m³",
+        value_fn=lambda s: _path(s, "pre_cleaning", "preCleaning", "measuredParticulateMatter25"),
     ),
     VolvoSensorDescription(
         key="air_purification_last_cycle",
@@ -646,7 +650,7 @@ class VolvoSoftwareVersion(VolvoEntity, SensorEntity):
     """Car software version reported by the OTA discovery service."""
 
     _attr_translation_key = "software_version"
-    _attr_icon = "mdi:package-up"
+    _attr_icon = "mdi:update"
     _attr_entity_category = None
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:

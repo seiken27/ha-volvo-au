@@ -28,7 +28,6 @@ async def async_setup_entry(
 
 class VolvoLocationTracker(VolvoEntity, TrackerEntity):
     _attr_translation_key = "location"
-    _attr_icon = "mdi:car"
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
         super().__init__(coordinator)

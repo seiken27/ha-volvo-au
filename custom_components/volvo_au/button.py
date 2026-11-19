@@ -51,13 +51,13 @@ class VolvoRefreshButton(VolvoEntity, ButtonEntity):
 # (unique id suffix, name, icon, what (for messages), client method, keyword arguments).
 # The unique id suffixes are the ones the entities had before 16 Nov 2026: do not change them.
 COMMAND_BUTTONS: list[tuple[str, str, str, str, str, dict[str, Any]]] = [
-    ("flash", "Flash", "mdi:car-light-high", "Flash", "flash", {}),
-    ("honk", "Honk", "mdi:bullhorn-outline", "Honk", "honk", {}),
-    ("honk_flash", "Honk & flash", "mdi:bullhorn", "Honk and flash", "honk_and_flash", {}),
+    ("flash", "Flash lights", "mdi:car-light-high", "Flash", "flash", {}),
+    ("honk", "Honk", "mdi:bugle", "Honk", "honk", {}),
+    ("honk_flash", "Honk and flash", "mdi:bugle", "Honk and flash", "honk_and_flash", {}),
     ("window_open", "Open windows", "mdi:window-open", "Open windows", "window_control", {"open": True}),
     ("window_close", "Close windows", "mdi:window-closed", "Close windows", "window_control", {"open": False}),
     ("engine_remote_start", "Engine remote start", "mdi:engine", "Engine remote start", "engine_remote_start", {}),
-    ("reduced_alarm", "Reduced alarm", "mdi:alarm-bell", "Lock with reduced alarm", "reduced_alarm", {}),
+    ("reduced_alarm", "Lock with reduced alarm", "mdi:lock-alert", "Lock with reduced alarm", "reduced_alarm", {}),
     ("tailgate_control", "Tailgate control", "mdi:truck-tailgate", "Open tailgate", "tailgate_control", {"open": True}),
     ("tailgate_close", "Close tailgate", "mdi:truck-tailgate-closed", "Close tailgate", "tailgate_control", {"open": False}),
 ]
