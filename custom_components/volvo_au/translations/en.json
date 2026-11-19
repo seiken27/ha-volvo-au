@@ -320,9 +320,6 @@
       "exterior_temperature": {
         "name": "Outside temperature"
       },
-      "last_seen": {
-        "name": "Last seen"
-      },
       "last_trip": {
         "name": "Last trip"
       },

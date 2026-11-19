@@ -254,9 +254,6 @@
       "exterior_temperature": {
         "name": "Outside temperature"
       },
-      "last_seen": {
-        "name": "Last seen"
-      },
       "location_address": {
         "name": "Location address"
       },

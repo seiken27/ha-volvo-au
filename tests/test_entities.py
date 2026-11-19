@@ -117,7 +117,7 @@ def test_entity_categories_follow_the_polestar_integration(volvo):
         volvo.select.VolvoClimateHeating,
     ):
         assert cls._attr_entity_category is EntityCategory.CONFIG, cls
-    for cls in (volvo.sensor.VolvoConnection, volvo.sensor.VolvoLastSeen, volvo.sensor.VolvoVin):
+    for cls in (volvo.sensor.VolvoConnection, volvo.sensor.VolvoVin):
         assert cls._attr_entity_category is EntityCategory.DIAGNOSTIC, cls
     # Controls stay primary so they show in the Controls card.
     assert getattr(volvo.switch.VolvoClimatizationSwitch, "_attr_entity_category", None) is None

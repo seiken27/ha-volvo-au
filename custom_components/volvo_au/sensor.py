@@ -346,9 +346,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: VolvoCoordinator = hass.data[DOMAIN][entry.entry_id]
-    # Replaced by the Charge current limit and Target SoC numbers (19 Nov 2026).
+    # Replaced by the Charge current limit and Target SoC numbers (19 Nov 2026); Last seen changed every few
+    # seconds and filled the activity log (Connection keeps offline_since).
     async_remove_registered_entities(
-        hass, "sensor", [f"{DOMAIN}_{coordinator.client.vin}_{key}" for key in ("amp_limit", "target_soc")]
+        hass, "sensor", [f"{DOMAIN}_{coordinator.client.vin}_{key}" for key in ("amp_limit", "target_soc", "last_seen")]
     )
     async_add_entities(async_gate_unsupported(hass, coordinator, "sensor", [VolvoSensor(coordinator, d) for d in SENSORS]))
     if car_battery_capacity_kwh(coordinator.car_info):
@@ -373,7 +374,7 @@ async def async_setup_entry(
             "async_get_trips_summary",
             supports_response=SupportsResponse.ONLY,
         )
-    async_add_entities([VolvoLocationAddress(coordinator), VolvoSoftwareVersion(coordinator), VolvoVin(coordinator), VolvoVehicleInfo(coordinator), VolvoLastSeen(coordinator), VolvoConnection(coordinator)])
+    async_add_entities([VolvoLocationAddress(coordinator), VolvoSoftwareVersion(coordinator), VolvoVin(coordinator), VolvoVehicleInfo(coordinator), VolvoConnection(coordinator)])
 
 
 class VolvoSensor(VolvoEntity, SensorEntity):
@@ -708,23 +709,6 @@ class VolvoConnection(VolvoEntity, SensorEntity):
         if st.online is False and st.last_seen is not None:
             attrs["offline_since"] = st.last_seen.isoformat()
         return attrs
-
-
-class VolvoLastSeen(VolvoEntity, SensorEntity):
-    """Newest car-side timestamp in the data Volvo sent (the car's own time, not our poll time)."""
-
-    _attr_translation_key = "last_seen"
-    _attr_device_class = SensorDeviceClass.TIMESTAMP
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_icon = "mdi:car-wireless"
-
-    def __init__(self, coordinator: VolvoCoordinator) -> None:
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_last_seen"
-
-    @property
-    def native_value(self) -> datetime | None:
-        return car_status(self.coordinator.data).last_seen
 
 
 class VolvoLastTrip(VolvoEntity, SensorEntity):
