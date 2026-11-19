@@ -9,13 +9,14 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-# Seconds between real reads. Anything not listed is read on every poll.
+# Seconds between real reads. The charge limits and schedule are changed in the Volvo app without any push to us, so they are
+# re-read on nearly every poll. Anything not listed is read on every poll.
 SLOW_TTLS: dict[str, float] = {
     "software_info": 3600.0,
     "weather": 900.0,
-    "target_soc": 900.0,
-    "amp_limit": 900.0,
-    "global_charge_timer": 900.0,
+    "target_soc": 120.0,
+    "amp_limit": 120.0,
+    "global_charge_timer": 120.0,
 }
 
 # Readers whose cache must be dropped when we change the value ourselves.
