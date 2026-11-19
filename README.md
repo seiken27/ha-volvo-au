@@ -3,9 +3,9 @@
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=volvo_au)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 
-Native Home Assistant custom component for Volvo cars on Volvo's C3 platform (built and tested on an Australian XC40 Recharge) using Volvo's iOS mobile gateway.
+Native Home Assistant custom component for Volvo cars on Volvo's C3 platform, using the same services as the Volvo Cars app. It does not use Volvo's official public API, so it also works in countries where that API is not available.
 
-This integration talks directly to the same backend the Volvo Cars iOS app uses (`cepmobtoken.kr.prod.c3.volvocars.com`), so it works in regions where Volvo's public API isn't available — including Australia.
+It talks to the same backend the Volvo Cars iOS app uses (`cepmobtoken.kr.prod.c3.volvocars.com`). It was built and tested on an Australian XC40 Recharge, but nothing in it is specific to one market. The matching integration for Polestar cars is [Polestar C3](https://github.com/BeauGiles/ha-polestar-c3).
 
 ## Status
 

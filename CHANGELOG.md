@@ -12,6 +12,7 @@ Dates are 2026. The version in `manifest.json` has not been bumped.
 - **The Connection sensor state is short:** `Online`, `Offline: <short reason>` or `Unknown`. The longer explanation and `offline_since` are attributes.
 - **Entities were removed or merged** (see Removed). Registry entries for them are deleted at setup.
 - **Display names changed**, entity IDs did not. Cards that show the entity's own name will look different; cards with hand-typed names will not.
+- **Why it is called "Volvo C3":** the integration uses Volvo's C3 services, the same ones the Volvo Cars app uses, not Volvo's official public API (which is not available in some countries, including Australia). Nothing in it is specific to one market, so it is named after the platform, not a country, in the same way as Polestar C3.
 - The domain is still `volvo_au`. Changing it would orphan existing entries and entity IDs, so it is left for a later migration.
 
 ### Harmonised with Polestar C3
