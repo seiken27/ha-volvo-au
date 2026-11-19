@@ -1,12 +1,12 @@
 {
   "domain": "volvo_au",
-  "name": "Volvo AU",
-  "codeowners": ["@seiken27"],
+  "name": "Volvo C3",
+  "codeowners": ["@BeauGiles"],
   "config_flow": true,
-  "documentation": "https://github.com/seiken27/ha-volvo-au",
+  "documentation": "https://github.com/BeauGiles/ha-volvo-c3",
   "integration_type": "device",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/seiken27/ha-volvo-au/issues",
+  "issue_tracker": "https://github.com/BeauGiles/ha-volvo-c3/issues",
   "requirements": ["httpx[http2]>=0.27"],
   "version": "0.2.0"
 }

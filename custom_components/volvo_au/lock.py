@@ -1,4 +1,4 @@
-"""Volvo AU lock entity."""
+"""Volvo C3 lock entity."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Common entity base for Volvo AU."""
+"""Common entity base for Volvo C3."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Config flow for Volvo (AU) integration.
+"""Config flow for Volvo C3 integration.
 
 Flow:
 1. user step: we generate a fresh DPoP keypair + PKCE pair, show the authorize URL.
@@ -74,7 +74,7 @@ def _normalise_plate(value: Any) -> str:
     return str(value or "").strip().upper()
 
 
-class VolvoAuOptionsFlow(config_entries.OptionsFlow):
+class VolvoC3OptionsFlow(config_entries.OptionsFlow):
     """Options: poll intervals, and an optional registration plate that overrides the one Volvo reports."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
@@ -112,14 +112,14 @@ class VolvoAuOptionsFlow(config_entries.OptionsFlow):
         )
 
 
-class VolvoAuConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class VolvoC3ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle the OAuth-paste config flow."""
 
     VERSION = 1
 
     @staticmethod
     def async_get_options_flow(config_entry):
-        return VolvoAuOptionsFlow()
+        return VolvoC3OptionsFlow()
 
     def __init__(self) -> None:
         self._dpop_pem: str | None = None

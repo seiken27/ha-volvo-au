@@ -1,4 +1,4 @@
-"""Volvo (AU) integration setup."""
+"""Volvo C3 integration setup."""
 
 from __future__ import annotations
 

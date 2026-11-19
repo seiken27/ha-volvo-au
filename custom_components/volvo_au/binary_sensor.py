@@ -1,4 +1,4 @@
-"""Volvo AU binary sensors — doors, windows, hood, tailgate, charge port."""
+"""Volvo C3 binary sensors — doors, windows, hood, tailgate, charge port."""
 
 from __future__ import annotations
 

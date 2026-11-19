@@ -1,4 +1,4 @@
-"""Diagnostics download for Volvo AU: settings, the car's capability flags and the latest snapshot, minus personal data."""
+"""Diagnostics download for Volvo C3: settings, the car's capability flags and the latest snapshot, minus personal data."""
 
 from __future__ import annotations
 

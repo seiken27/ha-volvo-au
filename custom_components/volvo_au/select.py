@@ -1,4 +1,4 @@
-"""Volvo AU select platform: seat and steering wheel heating for the next climatization start (EXPERIMENTAL).
+"""Volvo C3 select platform: seat and steering wheel heating for the next climatization start (EXPERIMENTAL).
 
 Only cars whose own record says they support those settings get these (the XC40/EX40 do not), so this has not been
 run against a real car.

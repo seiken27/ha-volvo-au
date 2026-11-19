@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Sign in to Volvo AU",
+        "title": "Sign in to Volvo C3",
         "description": "**[👉 Open Volvo sign-in in a new tab]({authorize_url})**\n\nSign in with your Volvo ID (email + password) and complete 2FA.\n\nWhen the browser tries to open `volvooncall://auth/callback?code=…` it will fail to launch — that's expected. Copy the URL from your browser's address bar (or just the `code=…` part, or just the code itself) and paste it below.",
         "data": {
           "redirect_url": "Callback URL or code"
@@ -18,7 +18,7 @@
         }
       },
       "reauth_confirm": {
-        "title": "Reconnect to Volvo AU",
+        "title": "Reconnect to Volvo C3",
         "description": "Your Volvo login has expired or was revoked.\n\n**[👉 Open Volvo sign-in in a new tab]({authorize_url})**\n\nSign in with your Volvo ID (email + password) and complete 2FA.\n\nWhen the browser tries to open `volvooncall://auth/callback?code=…` it will fail to launch — that's expected. Copy the URL from your browser's address bar (or just the `code=…` part, or just the code itself) and paste it below.",
         "data": {
           "redirect_url": "Callback URL or code"

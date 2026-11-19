@@ -1,4 +1,4 @@
-"""Volvo AU button platform: refresh and car commands."""
+"""Volvo C3 button platform: refresh and car commands."""
 
 from __future__ import annotations
 

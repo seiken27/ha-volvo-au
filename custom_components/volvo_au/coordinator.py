@@ -1,4 +1,4 @@
-"""DataUpdateCoordinator for Volvo AU integration.
+"""DataUpdateCoordinator for Volvo C3 integration.
 
 Cadence:
 - idle: POLL_IDLE (5 min, an option) -> parked, even when plugged in but not charging

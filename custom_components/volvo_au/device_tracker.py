@@ -1,4 +1,4 @@
-"""Volvo AU device_tracker — last parked GPS location."""
+"""Volvo C3 device_tracker — last parked GPS location."""
 
 from __future__ import annotations
 

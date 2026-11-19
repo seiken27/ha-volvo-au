@@ -1,4 +1,4 @@
-"""Volvo AU sensor platform."""
+"""Volvo C3 sensor platform."""
 
 from __future__ import annotations
 

@@ -1,9 +1,9 @@
-# Volvo AU — Home Assistant integration
+# Volvo C3 — Home Assistant integration
 
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=volvo_au)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 
-Native Home Assistant custom component for AU-market Volvo BEVs (XC40 Recharge, etc.) using Volvo's iOS mobile gateway.
+Native Home Assistant custom component for Volvo cars on Volvo's C3 platform (built and tested on an Australian XC40 Recharge) using Volvo's iOS mobile gateway.
 
 This integration talks directly to the same backend the Volvo Cars iOS app uses (`cepmobtoken.kr.prod.c3.volvocars.com`), so it works in regions where Volvo's public API isn't available — including Australia.
 
@@ -62,24 +62,24 @@ None of this polling wakes the car — Volvo's cloud reads cached telemetry the 
 
 ### Via HACS (recommended)
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=seiken27&repository=ha-volvo-au&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BeauGiles&repository=ha-volvo-c3&category=integration)
 
-Click the badge above to add this repo to HACS in one click, then download "Volvo AU" and restart Home Assistant.
+Click the badge above to add this repo to HACS in one click, then download "Volvo C3" and restart Home Assistant.
 
 Manual steps if the badge doesn't work:
 
 1. In HACS → Integrations → ⋮ menu → **Custom repositories**.
-2. Add `https://github.com/seiken27/ha-volvo-au` with category **Integration**.
-3. Find "Volvo AU" in the HACS integrations list, click **Download**.
+2. Add `https://github.com/BeauGiles/ha-volvo-c3` with category **Integration**.
+3. Find "Volvo C3" in the HACS integrations list, click **Download**.
 4. Restart Home Assistant.
-5. Settings → Devices & Services → Add Integration → "Volvo AU".  
+5. Settings → Devices & Services → Add Integration → "Volvo C3".  
    (Or click the "Add to Home Assistant" badge at the top of this README.)
 
 ### Manual
 
 1. Copy `custom_components/volvo_au/` into your Home Assistant `config/custom_components/`.
 2. Restart Home Assistant.
-3. Settings → Devices & Services → Add Integration → "Volvo AU".
+3. Settings → Devices & Services → Add Integration → "Volvo C3".
 
 ## Auth flow
 

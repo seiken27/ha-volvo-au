@@ -1,4 +1,4 @@
-"""Constants for Volvo (AU) integration."""
+"""Constants for Volvo C3 integration."""
 
 DOMAIN = "volvo_au"
 

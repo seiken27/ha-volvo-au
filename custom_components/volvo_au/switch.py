@@ -1,4 +1,4 @@
-"""Volvo AU switch platform — manual charge schedule on/off."""
+"""Volvo C3 switch platform — manual charge schedule on/off."""
 
 from __future__ import annotations
 

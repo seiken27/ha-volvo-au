@@ -1,4 +1,4 @@
-"""Volvo AU charge schedule helpers."""
+"""Volvo C3 charge schedule helpers."""
 
 from __future__ import annotations
 

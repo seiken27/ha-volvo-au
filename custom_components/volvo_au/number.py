@@ -1,4 +1,4 @@
-"""Volvo AU number platform \u2014 charge current limit."""
+"""Volvo C3 number platform \u2014 charge current limit."""
 
 from __future__ import annotations
 
