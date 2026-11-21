@@ -25,8 +25,8 @@ Evidence from the two code bases (21 November 2026):
 | Wire format | Hand-rolled protobuf in a gRPC frame | Hand-rolled protobuf (`codec.py`, `wire.py`) | **Yes**, a codec that can be shared |
 | Command status | Chronos lifecycle and invocation status, decoded in `volvo_api.py` | `ChronosStatus`, `CHRONOS_SUCCESS_STATES`, `ResponseStatus` in `models/common.py` | **Yes**, one decoder |
 | Data models | Dicts and helper modules (`powertrain.py`, `climate.py`, `journal.py`) | Typed models in `models/` (24 files) | **Yes**, Polestar's models are the starting point |
-| Sign-in | `volvoid.eu.volvocars.com` OAuth with DPoP keys and an app installation ID | `polestarid.eu.polestar.com` OIDC | **No**, separate identity systems |
-| Transport | gRPC frames built by hand and sent with `httpx.Client(http2=True)` (a synchronous client); `aiohttp` for sign-in and streams | `grpclib` with an endpoint discovery step (`cnepmob.volvocars.com`) | **Not yet**, could converge |
+| Sign-in | Volvo ID OAuth with DPoP keys and an app installation ID | Polestar ID OIDC | **No**, separate identity systems |
+| Transport | gRPC frames built by hand and sent with `httpx.Client(http2=True)` (a synchronous client); `aiohttp` for sign-in and streams | `grpclib` with an endpoint discovery step | **Not yet**, could converge |
 | App identity | User agent `vca-ios/7.6.0`, Volvo client ID | `PolestarApp/5.15.1b9417 Android/14` | **No**, per brand |
 | Extras | Driving journal, live update streams, polling tiers | GraphQL app-backend query | **No**, per brand |
 

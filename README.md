@@ -3,73 +3,112 @@
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=volvo_au)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 
-Native Home Assistant custom component for Volvo cars on Volvo's C3 platform, using the same services as the Volvo Cars app. It does not use Volvo's official public API, so it also works in countries where that API is not available.
+Native Home Assistant custom integration for Volvo cars on Volvo's C3 platform, using the same services as the Volvo Cars app. Battery, location, doors, locks, climate, charging settings and more, with commands sent back through the same channel the app uses.
 
-It talks to the same backend the Volvo Cars iOS app uses (`cepmobtoken.kr.prod.c3.volvocars.com`). It was built and tested on an Australian XC40 Recharge, but nothing in it is specific to one market. The matching integration for Polestar cars is [Polestar C3](https://github.com/BeauGiles/ha-polestar-c3).
+The matching integration for Polestar cars is [Polestar C3](https://github.com/BeauGiles/ha-polestar-c3). The two talk to the same backend and share entity names, states and behaviour.
 
 > [!WARNING]
 > **Unofficial and unsupported.** This is a community project. It is **not made, endorsed or supported by Volvo Cars**, and Volvo Cars does not know about it. It uses the same private services as the Volvo Cars app, not Volvo's official API. Volvo can change or block those services at any time, and this integration can stop working without notice.
 >
 > **Check the official integration first.** If you live in a region supported by Volvo's official API ([supported locations](https://developer.volvocars.com/terms-and-conditions/apis-supported-locations/)), use the official [Volvo integration](https://www.home-assistant.io/integrations/volvo/) built into Home Assistant instead. Use this one only if the official integration isn't available where you live, or doesn't offer what you need.
 
-## Status
+> [!NOTE]
+> **Why "Volvo C3"?** The integration uses Volvo's C3 services, the same ones the Volvo Cars app uses, not Volvo's official public API (which is not available in some countries, including Australia). Nothing in it is specific to one market, so it is named after the platform, like Polestar C3.
 
-Personal project, reverse-engineered from the iOS app. See the disclaimer below.
+## Supported cars
+
+Built and tested on an **Australian Volvo XC40 Recharge (2023)**. The integration uses Volvo's C3 platform, the same one the Volvo Cars app uses, so other Volvo cars on that platform should work, but features differ between models and not every model has been tested. The integration asks the car which features it supports and hides the rest, so a missing entity usually means the car doesn't offer it. For example, the XC40 reports no tyre pressures and no climate settings.
+
+Reports of what works and what doesn't on your model are welcome. Please [open an issue](https://github.com/BeauGiles/ha-volvo-c3/issues).
 
 ## Features
 
+Volvo C3 and [Polestar C3](https://github.com/BeauGiles/ha-polestar-c3) talk to the same Volvo Cars C3 platform, so most features are the same. This table is shared by both READMEs.
+
+✅ supported · 🧪 experimental (limited testing) · ◐ only on cars that report it · ➖ not available
+
 ### Read
 
-- Battery: SoC %, range, charging power/current/voltage, charging state
-- Odometer
-- Doors, windows, hood, tailgate, central lock
-- Tyre pressures (per wheel)
-- Service health: brake fluid, engine coolant, oil, washer fluid, 12V, light warnings
-- Service due (distance / days / engine hours)
-- Charge schedule and target SoC
-- Charge current limit (6–32 A)
-- Last parked location + reverse-geocoded address (snaps to HA zones)
-- Exterior temperature (via Volvo's weather service)
-- Usage mode (in-use / abandoned)
-- Software version (OTA)
-- Online: whether the car can receive commands now (from Volvo's availability reply), with the last time the car reported
-- Connection: "Online", or "Offline: car in use" (short, so the history stays quiet); the full explanation and the time the car went offline are attributes (handy for voice assistants)
+| Feature | Volvo C3 | Polestar C3 |
+| --- | :---: | :---: |
+| State of charge, range | ✅ | ✅ |
+| Charging status, power, current, voltage, charger connection | ✅ | ✅ |
+| Time to full charge | ✅ | ✅ |
+| Time to target charge and to minimum SoC | ➖ | ✅ |
+| Charge port, plugged in | ✅ | ✅ |
+| Saved charge locations, "at charge location" | ➖ | ✅ |
+| Location, with address | ✅ | ✅ |
+| Parked location, altitude, heading, speed | ➖ | ✅ |
+| Doors, windows, hood, tailgate | ✅ | ✅ |
+| Sunroof | ◐ | ➖ |
+| Central lock, boot lock | ✅ | ✅ |
+| Alarm triggered, In use, Online, Connection | ✅ | ✅ |
+| Odometer, trip meters, average consumption, average speed | ✅ | ✅ (average speed hidden on the Polestar 2) |
+| Outside temperature | ✅ | ✅ |
+| Service required (with urgency), days, distance and engine hours to service | ✅ | ✅ |
+| Tyre warning, per-wheel grades | ◐ | ◐ |
+| Per-wheel tyre pressures | ◐ | ◐ |
+| 12V battery, brake fluid, washer fluid, light status | ✅ | ✅ |
+| Engine coolant, oil level (combustion cars) | ◐ | ➖ |
+| Climate status and time remaining | ➖ | ✅ |
+| Cabin air quality | ✅ | ✅ |
+| Software version | ✅ | ✅ |
+| Driving journal: last trip, trips and distance this month (opt in) | ✅ | ➖ |
+| VIN, vehicle info, registration plate | ✅ | ✅ |
 
-### Write
+### Control
 
-- Lock / unlock (whole car)
-- Unlock tailgate only (separate lock entity)
-- Flash lights
-- Honk + flash
-- Refresh
-- Climatization start / stop
-- Air purification start / stop
-- Charge schedule: enable/disable, start time, end time
-- Charge current limit
-- Open / close all windows
-- Open / close tailgate
-- Engine remote start (on an electric car this starts cabin climate)
-- Start / stop charging
-- Lock with reduced alarm
+| Feature | Volvo C3 | Polestar C3 |
+| --- | :---: | :---: |
+| Lock, unlock, lock with reduced alarm | ✅ | ✅ |
+| Boot lock (unlock the tailgate only) | ✅ | ✅ |
+| Open and close tailgate | ✅ | ➖ |
+| Flash lights, honk, honk and flash | ✅ | ✅ |
+| Open and close all windows | ✅ | ✅ |
+| Start and stop climate | ✅ | ✅ |
+| Climate target temperature | ◐ | ◐ |
+| Seat and steering wheel heating | 🧪 ◐ | ◐ |
+| Engine remote start (starts cabin climate on an EV) | ✅ | ➖ |
+| Air purification | ✅ | ✅ |
+| Target SoC, charging amp limit | ✅ | ✅ |
+| Charging schedule: switch, start and end times | ✅ | ✅ |
+| Start and stop charging | ✅ | ✅ |
+| Parking climate timers (calendars) | ➖ | ✅ |
+| Software update: schedule, install, cancel | ➖ | ✅ |
+| Manage saved charge locations (services) | ➖ | ✅ |
+
+### Behaviour
+
+| Feature | Volvo C3 | Polestar C3 |
+| --- | :---: | :---: |
+| Clear error when a command is refused (offline, privacy mode, in use, busy, timeout) | 🧪 | ✅ |
+| Live updates streamed from the car's cloud | 🧪 | ✅ |
+| Adaptive polling (faster while charging, driving or running climate) | ✅ | ✅ |
+| Entities hidden for features the car doesn't have | ✅ | ✅ |
+| Reconfigure flow, diagnostics download | ✅ | ✅ |
+| Demo mode | ➖ | ✅ |
+| More than one car (one entry per car) | ✅ | ✅ |
 
 > [!CAUTION]
-> These commands act on a real car. You are responsible for how you use them and for any automations you build on them.
+> Commands act on a real car. You are responsible for how you use them and for any automations you build on them.
 
 Every command shows an error in Home Assistant when Volvo refuses it or does not answer, and is refused before it is sent while Volvo reports the car offline. (Volvo's server answers HTTP 200 to a command even when the car is offline, so without this check a command could silently do nothing.)
 
-### Adaptive polling
+### Entities
 
-- **5 min** when idle
-- **1 min** when active (charging, doors open, climate on, car in use)
-- **5 sec for 5 min** after a trip ends (until you lock the car)
-- **5 sec for 60 sec** burst after any command
+| Platform | Examples |
+| --- | --- |
+| Sensor | State of charge, range, charging status, charger connection, charging power, odometer, trip meters, service sensors, tyre pressures, software version, Connection, Vehicle info, VIN |
+| Binary sensor | Online, In use, Plugged in, Alarm triggered, Tyre warning, Service required, 12V battery, Brake fluid, Washer fluid, Light status, doors, windows, hood, tailgate, sunroof, charge port |
+| Device tracker | Location |
+| Lock | Lock, Boot lock |
+| Switch | Climate, Charging, Charging schedule, Air purification |
+| Number | Target SoC, Charging amp limit, Climate target temperature |
+| Select | Seat and steering wheel heating |
+| Button | Flash lights, Honk, Honk and flash, Lock with reduced alarm, Open and Close windows, Tailgate control, Close tailgate, Engine remote start, Refresh |
+| Time | Charging schedule start and end |
 
-> [!NOTE]
-> None of this polling wakes the car. Volvo's cloud reads cached telemetry that the car pushes opportunistically.
-
-## Notifications and Live Activities
-
-Example automations for a charging and a climate (preconditioning) Live Activity on iOS and Android: see [docs/live-activities.md](docs/live-activities.md).
+Entity IDs come from the car model and registration, for example `sensor.xc40_abc123_state_of_charge`. Which entities appear depends on what the car supports. The **Online** sensor says whether the car can receive commands now, and **Connection** reads "Online" or a short "Offline: reason", with the full explanation and the time the car went offline as attributes.
 
 ## Install
 
@@ -77,24 +116,28 @@ Example automations for a charging and a climate (preconditioning) Live Activity
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BeauGiles&repository=ha-volvo-c3&category=integration)
 
-Click the badge above to add this repo to HACS in one click, then download "Volvo C3" and restart Home Assistant.
+Click the badge above to add this repo to HACS in one click, then download **Volvo C3** and restart Home Assistant.
 
 Manual steps if the badge doesn't work:
 
-1. In HACS → Integrations → ⋮ menu → **Custom repositories**.
+1. In HACS, open **⋮ → Custom repositories**.
 2. Add `https://github.com/BeauGiles/ha-volvo-c3` with category **Integration**.
-3. Find "Volvo C3" in the HACS integrations list, click **Download**.
+3. Find **Volvo C3** in HACS and click **Download**.
 4. Restart Home Assistant.
-5. Settings → Devices & Services → Add Integration → "Volvo C3".  
-   (Or click the "Add to Home Assistant" badge at the top of this README.)
+5. Go to **Settings → Devices & Services → Add Integration → Volvo C3**.
 
 ### Manual
 
 1. Copy `custom_components/volvo_au/` into your Home Assistant `config/custom_components/`.
 2. Restart Home Assistant.
-3. Settings → Devices & Services → Add Integration → "Volvo C3".
+3. Go to **Settings → Devices & Services → Add Integration → Volvo C3**.
 
-## Auth flow
+### Updating
+
+> [!IMPORTANT]
+> After updating, **restart Home Assistant**. A reload is not enough. Read the [changelog](CHANGELOG.md) first, because some updates change sensor states or remove entities.
+
+## Sign in
 
 Uses Volvo ID OAuth with PKCE + DPoP, same as the iOS app. You'll need:
 
@@ -122,6 +165,43 @@ During config-flow, you'll be sent to Volvo ID in a browser to sign in (+ 2FA). 
 
 > [!IMPORTANT]
 > The `state` parameter in the URL must match the one Home Assistant generated for the current flow attempt. If you cancel and restart the flow, request a fresh login URL. Don't reuse an old one.
+
+## Options
+
+Open **Settings → Devices & Services → Volvo C3 → Configure**.
+
+- **Idle poll interval** (default 300 seconds, between 60 and 86400) and **active poll interval** (default 60 seconds, between 10 and 3600, never slower than idle). The active interval is used while charging, with a door open, with climate on or while the car is in use. After a trip ends the integration polls every 5 seconds for 5 minutes (until you lock the car), and for 60 seconds after any command.
+- **Live updates** (experimental): keep a connection open to Volvo so changes arrive as they happen. If Volvo only ever sends one reading for a service, that service falls back to polling by itself.
+- **Driving journal** (off by default): adds Last trip, Trips this month and Distance this month, and the `get_trips` and `get_trips_summary` services. Off by default because trips include where you drove. The journal must also be turned on in the Volvo app.
+
+> [!NOTE]
+> None of this polling wakes the car. Volvo's cloud reads cached telemetry that the car pushes opportunistically.
+
+## Services
+
+- `volvo_au.get_trips`: list trips for a period, optionally with coordinates.
+- `volvo_au.get_trips_summary`: totals for a period.
+
+Both target one of the integration's sensors and need the driving journal turned on. Fields are in **Developer tools → Actions**.
+
+## Notifications and Live Activities
+
+Example automations for a charging and a climate (preconditioning) Live Activity on iOS and Android: see [docs/live-activities.md](docs/live-activities.md).
+
+## FAQ
+
+**An entity is missing.**
+The integration hides entities for features the car says it doesn't have. Check [Supported cars](#supported-cars).
+
+**A command failed.**
+Volvo refuses a command in some situations, for example when the car is offline, being driven, or already busy. The error in Home Assistant says which, where Volvo tells us. Try again in a few minutes.
+
+**Something stopped working.**
+Download diagnostics from **Settings → Devices & Services → Volvo C3 → ⋮ → Download diagnostics** and attach it to an issue.
+
+## For developers
+
+The code that speaks to Volvo's servers is in `custom_components/volvo_au/volvo_api.py`. It talks to the same backend the Volvo Cars iOS app uses. Run `uv run --with pytest --with voluptuous pytest -q` for the tests. A design for sharing the backend code with Polestar C3 is in [docs/design-shared-c3-library.md](docs/design-shared-c3-library.md).
 
 ## ☕ Support
 
