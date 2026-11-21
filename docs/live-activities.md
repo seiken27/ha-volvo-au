@@ -12,10 +12,11 @@ These two example automations give you:
 | **Charging** | State of charge as a progress bar, charge power in the title, a countdown to the estimated finish, the charge target | "Charged" (audible) when finished, "Paused" (audible) if charging stops while still plugged in; cleared on unplug, or 30 min after "Charged" |
 | **Climate** (preconditioning) | A countdown of the climatisation time left, what started it, outside temperature | Cleared immediately if stopped early, otherwise "Done" and cleared 5 min later, or as soon as a door opens |
 
-The same payload works on **both iOS and Android**: the Companion app on each
-platform understands `live_update: true`, `tag`, `progress`, `chronometer`,
-`when` and `critical_text`. A few things are platform specific, see
-[Platform notes](#platform-notes).
+> [!NOTE]
+> The same payload works on **both iOS and Android**: the Companion app on each
+> platform understands `live_update: true`, `tag`, `progress`, `chronometer`,
+> `when` and `critical_text`. A few things are platform specific, see
+> [Platform notes](#platform-notes).
 
 ## Requirements
 
@@ -43,8 +44,9 @@ platform understands `live_update: true`, `tag`, `progress`, `chronometer`,
 | `sensor.xc40_abc123_exterior_temperature` | Optional, outside temperature |
 | `binary_sensor.xc40_abc123_{front,rear}_{left,right}_door` | Optional, end the climate activity when a door opens |
 
-Find-and-replace `xc40_abc123` with your own prefix, and set `devices` in each
-automation to your own notify services.
+> [!IMPORTANT]
+> Find-and-replace `xc40_abc123` with your own prefix, and set `devices` in each
+> automation to your own notify services.
 
 ## How it works
 
@@ -414,10 +416,12 @@ actions:
 
 Based on the [Companion app Live Activities docs](https://companion.home-assistant.io/docs/notifications/live-activities/).
 
-- **`title` is required and fixed.** iOS sets the title when the activity starts
-  and later updates can't change it, which is why the charging title (with the
-  kW figure) is only accurate at the start. On Android, an update without a
-  `title` is shown as a plain banner instead of a live update.
+> [!IMPORTANT]
+> **`title` is required and fixed.** iOS sets the title when the activity starts
+> and later updates can't change it, which is why the charging title (with the
+> kW figure) is only accurate at the start. On Android, an update without a
+> `title` is shown as a plain banner instead of a live update.
+
 - **Colours:** `notification_icon_color` is the iOS icon colour and `color` is
   the Android one, so both are sent and each platform ignores the other's.
 - **iOS only:** `silent`, `url` (resend it on every update, it isn't sticky),
@@ -437,11 +441,13 @@ Based on the [Companion app Live Activities docs](https://companion.home-assista
 
 ## Troubleshooting
 
+> [!WARNING]
+> **A new activity won't start on iOS after lots of testing.** iOS limits how
+> many can be started in a short time, with no error logged. Wait a while, send
+> `clear_notification` for the tag first, or use a different tag.
+
 - **Nothing appears:** check notification permission, that the device's notify
   service name is right, and (iOS) that Live Activities are enabled for the app.
-- **A new activity won't start on iOS after lots of testing:** iOS limits how
-  many can be started in a short time, with no error logged. Wait a while, send
-  `clear_notification` for the tag first, or use a different tag.
 - **Countdown missing or wrong:** `time_to_full` is `unknown` when the car isn't
   actively charging, so `chronometer` is false and the card shows progress only.
 - **Card stays after unplugging:** the tag in the clear action must match the

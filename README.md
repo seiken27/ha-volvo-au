@@ -7,9 +7,14 @@ Native Home Assistant custom component for Volvo cars on Volvo's C3 platform, us
 
 It talks to the same backend the Volvo Cars iOS app uses (`cepmobtoken.kr.prod.c3.volvocars.com`). It was built and tested on an Australian XC40 Recharge, but nothing in it is specific to one market. The matching integration for Polestar cars is [Polestar C3](https://github.com/BeauGiles/ha-polestar-c3).
 
+> [!WARNING]
+> **Unofficial and unsupported.** This is a community project. It is **not made, endorsed or supported by Volvo Cars**, and Volvo Cars does not know about it. It uses the same private services as the Volvo Cars app, not Volvo's official API. Volvo can change or block those services at any time, and this integration can stop working without notice.
+>
+> **Check the official integration first.** If you live in a region supported by Volvo's official API ([supported locations](https://developer.volvocars.com/terms-and-conditions/apis-supported-locations/)), use the official [Volvo integration](https://www.home-assistant.io/integrations/volvo/) built into Home Assistant instead. Use this one only if the official integration isn't available where you live, or doesn't offer what you need.
+
 ## Status
 
-Personal project. Use at your own risk. Reverse-engineered from the iOS app; Volvo can change the API at any time.
+Personal project, reverse-engineered from the iOS app. See the disclaimer below.
 
 ## Features
 
@@ -47,6 +52,9 @@ Personal project. Use at your own risk. Reverse-engineered from the iOS app; Vol
 - Start / stop charging
 - Lock with reduced alarm
 
+> [!CAUTION]
+> These commands act on a real car. You are responsible for how you use them and for any automations you build on them.
+
 Every command shows an error in Home Assistant when Volvo refuses it or does not answer, and is refused before it is sent while Volvo reports the car offline. (Volvo's server answers HTTP 200 to a command even when the car is offline, so without this check a command could silently do nothing.)
 
 ### Adaptive polling
@@ -56,7 +64,8 @@ Every command shows an error in Home Assistant when Volvo refuses it or does not
 - **5 sec for 5 min** after a trip ends (until you lock the car)
 - **5 sec for 60 sec** burst after any command
 
-None of this polling wakes the car — Volvo's cloud reads cached telemetry the car pushes opportunistically.
+> [!NOTE]
+> None of this polling wakes the car. Volvo's cloud reads cached telemetry that the car pushes opportunistically.
 
 ## Notifications and Live Activities
 
@@ -96,7 +105,8 @@ Uses Volvo ID OAuth with PKCE + DPoP, same as the iOS app. You'll need:
 
 During config-flow, you'll be sent to Volvo ID in a browser to sign in (+ 2FA). After login, Volvo tries to redirect to a `volvooncall://oauth/code?code=...&state=...` URL that the iOS app would normally handle. On a desktop browser there's no app to catch it, so you need to grab the URL manually and paste it back into Home Assistant.
 
-**Recommended: use Chrome or Edge with DevTools.** Safari silently swallows custom-scheme redirects and won't show the URL anywhere.
+> [!TIP]
+> **Use Chrome or Edge with DevTools.** Safari silently swallows custom-scheme redirects and won't show the URL anywhere.
 
 1. Open **Chrome** or **Edge**.
 2. Open **DevTools** (F12 or ⌥⌘I on Mac) → **Network** tab.
@@ -110,13 +120,12 @@ During config-flow, you'll be sent to Volvo ID in a browser to sign in (+ 2FA). 
 
 *The bits you care about: **Network** tab open, **Preserve log** ticked, then the failed `callback?code=...` entry at the bottom — Request URL on the right is what you copy.*
 
-The `state` parameter in the URL must match the one Home Assistant generated for the current flow attempt. If you cancel and restart the flow, request a fresh login URL — don't reuse an old one.
+> [!IMPORTANT]
+> The `state` parameter in the URL must match the one Home Assistant generated for the current flow attempt. If you cancel and restart the flow, request a fresh login URL. Don't reuse an old one.
 
 ## ☕ Support
 
-If this saved you some time (or you just like that the integration exists) and you’d like to support me, feel free to lob a coffee my way.
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/J4Y420EISJ)
+If this saved you some time and you'd like to support me, you can leave a tip at [b3.au/tip-jar](https://b3.au/tip-jar).
 
 ## License
 
@@ -124,4 +133,16 @@ MIT — see [LICENSE](./LICENSE).
 
 ## Disclaimer
 
-Not affiliated with Volvo Cars. Using this integration may violate the Volvo Cars terms of service in some regions. Use a secondary account.
+This project is independent. It is not affiliated with, authorised by, endorsed by or supported by Volvo Cars or any of its subsidiaries. "Volvo" and related names and logos are trademarks of their owners and are used only to say which cars this works with.
+
+> [!WARNING]
+> **Unofficial access.** It was built by reverse engineering how the Volvo Cars app talks to Volvo's servers. It does not use Volvo's published API. Volvo can change that at any time, with no warning and no migration path.
+
+- **Terms of service.** Using it may breach the Volvo Cars terms of service in some regions, and could lead to your account being limited or blocked. Consider using a secondary account that has been given access to your car, not your main one.
+- **It controls a real car.** Commands such as lock, unlock, start climate and start charging act on your actual vehicle. You are responsible for how you use them, and for automations you build on them. Do not rely on this for anything safety critical.
+- **Your credentials.** Sign-in tokens are stored in your Home Assistant configuration. Protect your Home Assistant backups and access accordingly.
+- **No warranty and no support from Volvo.** Use it at your own risk. It is provided as is, as set out in the licence. The authors are not responsible for any consequences of using it, including vehicle malfunctions, warranty implications or account restrictions. **Please do not contact Volvo Cars or your dealer for help with this integration**; open an issue here instead.
+
+### Official options
+
+If you live in a region supported by Volvo's official API, the built-in Home Assistant [Volvo integration](https://www.home-assistant.io/integrations/volvo/) is the supported way to connect your car. Check the [supported locations](https://developer.volvocars.com/terms-and-conditions/apis-supported-locations/). This integration exists for people outside those regions, or who need something the official one doesn't provide.

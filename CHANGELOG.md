@@ -4,6 +4,13 @@ All notable changes to Volvo C3 (domain `volvo_au`). This integration and [Poles
 
 Dates are 2026.
 
+## Unreleased
+
+### Changed
+
+- **README:** an unofficial and unsupported warning at the top and a fuller Disclaimer, pointing to Volvo's official Home Assistant integration for the regions its API supports.
+- Documentation uses GitHub alert boxes (note, tip, important, warning) for the points that matter.
+
 ## 0.3.1 (21 November)
 
 ### Changed
