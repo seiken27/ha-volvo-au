@@ -58,6 +58,10 @@ Every command shows an error in Home Assistant when Volvo refuses it or does not
 
 None of this polling wakes the car — Volvo's cloud reads cached telemetry the car pushes opportunistically.
 
+## Notifications and Live Activities
+
+Example automations for a charging and a climate (preconditioning) Live Activity on iOS and Android: see [docs/live-activities.md](docs/live-activities.md).
+
 ## Install
 
 ### Via HACS (recommended)
