@@ -2,9 +2,9 @@
 
 All notable changes to Volvo C3 (domain `volvo_au`). This integration and [Polestar C3](https://github.com/BeauGiles/ha-polestar-c3) talk to the same Volvo C3 backend and were brought in line with each other on 18 and 19 November 2026, so most entries here have a matching entry in the Polestar changelog.
 
-Dates are 2026. The version in `manifest.json` has not been bumped.
+Dates are 2026.
 
-## Unreleased (18 to 19 November)
+## 0.3.0 (18 to 21 November)
 
 ### Read this before updating
 
@@ -26,6 +26,7 @@ Dates are 2026. The version in `manifest.json` has not been bumped.
 ### Added
 
 - **Tyre warning:** one binary sensor. Attributes give each wheel's grade (`ok`, `very_low`, `low`, `high`) and pressure in kPa, only on cars that report individual pressures. Separate pressure sensors appear only on those cars.
+- **Live Activities guide:** [docs/live-activities.md](docs/live-activities.md) has example automations for charging and climate Live Activities on iOS and Android.
 - **Service required** attributes `service_urgency` (`almost_due`, `due`, `overdue`) and `service_reason` (`regular`, `engine_hours`, `distance`).
 - **Command refusal reasons:** the car's reply to a command is now read. A refusal says why (privacy mode on, car being driven, another command in progress, timeouts) instead of looking like success. Not yet tested against a real refusal. A "car offline" status is not treated as a refusal because it was seen on commands that worked.
 - **Driving journal (opt in):** Last trip sensor, Trips this month and Distance this month, and the services `get_trips` and `get_trips_summary`. Off by default because trips include places.
