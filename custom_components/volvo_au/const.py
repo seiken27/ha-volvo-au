@@ -28,7 +28,7 @@ TOKEN_URL = f"{ISSUER}/as/token.oauth2"
 AUTHORIZE_URL = f"{ISSUER}/as/authorization.oauth2"
 CLIENT_ID = "nxpwptn_10"
 REDIRECT_URI = "volvooncall://auth/callback"
-USER_AGENT = "vca-ios/6.9.0"
+USER_AGENT = "vca-ios/7.6.0"
 
 SCOPES = (
     "openid email profile phone address "

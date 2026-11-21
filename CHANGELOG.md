@@ -4,6 +4,12 @@ All notable changes to Volvo C3 (domain `volvo_au`). This integration and [Poles
 
 Dates are 2026.
 
+## 0.3.1 (21 November)
+
+### Changed
+
+- The `User-Agent` sent to Volvo is now `vca-ios/7.6.0` (was `vca-ios/6.9.0`), matching the current Volvo Cars app version.
+
 ## 0.3.0 (18 to 21 November)
 
 ### Read this before updating
