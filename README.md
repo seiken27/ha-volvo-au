@@ -196,6 +196,12 @@ The integration hides entities for features the car says it doesn't have. Check 
 **A command failed.**
 Volvo refuses a command in some situations, for example when the car is offline, being driven, or already busy. The error in Home Assistant says which, where Volvo tells us. Try again in a few minutes.
 
+**The Volvo sign-in page looks different.**
+Since late November 2026 the sign-in link from Home Assistant forwards you to a new Volvo ID page on `auth.volvocars.com`. That is expected. Enter your email, password and the one-time code Volvo emails you as usual. Afterwards you are sent back through the old Volvo ID service, and the browser ends on a `volvooncall://auth/callback?code=…` link that fails to open. Copy that link and paste it into Home Assistant as before. Tested on 27 November 2026 with Reconfigure: nothing in the integration needed to change, and existing sign-ins keep working.
+
+> [!TIP]
+> If you see "We're sorry! An error has occurred" after the one-time code, close the tab and start again from the link in Home Assistant. If it keeps happening, [open an issue](https://github.com/BeauGiles/ha-volvo-c3/issues) with the address the error appeared on, but leave out the `code=` part and any tokens.
+
 **Something stopped working.**
 Download diagnostics from **Settings → Devices & Services → Volvo C3 → ⋮ → Download diagnostics** and attach it to an issue.
 

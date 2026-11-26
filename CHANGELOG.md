@@ -10,6 +10,7 @@ Dates are 2026.
 
 - **README:** an unofficial and unsupported warning at the top and a fuller Disclaimer, pointing to Volvo's official Home Assistant integration for the regions its API supports.
 - Documentation uses GitHub alert boxes (note, tip, important, warning) for the points that matter.
+- **FAQ: new Volvo sign-in page.** Since late November Volvo ID forwards sign-in to a new page on `auth.volvocars.com`. The integration works with it unchanged (tested 27 November with Reconfigure); the FAQ explains what to expect.
 
 ## 0.3.1 (21 November)
 
