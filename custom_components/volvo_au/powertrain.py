@@ -77,6 +77,19 @@ def battery_capacity_kwh(car: dict[str, Any] | None) -> float | None:
     return round(kwh, 1) if kwh > 0 else None
 
 
+# Electric cars on the CMA platform (XC40 and C40 Recharge, like the Polestar 2) send a charge port status that
+# stays "closed" even with a cable in (checked on an XC40, Nov 2026). No capability flag says so.
+_CMA_ELECTRIC_MODELS = frozenset({"XC40", "C40", "EX40", "EC40"})
+
+
+def reports_charge_port(car: dict[str, Any] | None) -> bool | None:
+    """False for an electric XC40/C40, whose charge port status never changes; None when the record does not say."""
+    model = str(_first(car, ("modelName",)) or "").strip().upper()
+    if not model or engine_type(car) is None:
+        return None
+    return not (engine_type(car) == "electric" and model in _CMA_ELECTRIC_MODELS)
+
+
 def has_combustion_engine(car: dict[str, Any] | None) -> bool | None:
     """True or False when the car says, ``None`` when it did not (so callers keep the entity)."""
     tank = _first(car, ("fuelTankVolume",), ("propulsion", "fuelTankVolume"))

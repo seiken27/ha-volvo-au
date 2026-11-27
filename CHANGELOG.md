@@ -16,6 +16,8 @@ Dates are 2026.
 
 ### Changed
 
+- **Charge port hidden on electric XC40 and C40.** On these cars (CMA platform, like the Polestar 2) the charge port status stays closed even with a cable in, so the sensor is disabled. It is decided from the car's model and engine type, as no capability flag covers it; you can still enable it. Matches Polestar C3 on the Polestar 2.
+- **Honk and flash is now Lights and horn**, as the Polestar app calls it. The entity ID is unchanged.
 - **Boot and bonnet, not tailgate and hood.** Hood is now **Bonnet** (Australian and UK wording). The Tailgate binary sensor is now **Boot**, and the Tailgate control and Close tailgate buttons are **Open boot** and **Close boot**, matching Boot lock and the Australian wording. Their icons were blank (`mdi:truck-tailgate` is not a Material Design icon) and are now `mdi:arrow-up-box` and `mdi:arrow-down-box`. Only names and icons change; existing entity IDs stay. Matches Polestar C3.
 - **Connection reads "In use" while the car is being used**, matching the Volvo app, instead of "Offline: car in use" ("In use from the app" for Volvo's remote-use reason). Volvo reports the car unavailable for remote commands while it is driven, so it never really was offline. Other reasons still read "Offline: …". The In use binary sensor is unchanged. Matches Polestar C3.
 - **Entity sections tidied**, matching Polestar C3: **12V battery**, **Brake fluid**, **Light status**, **Engine coolant low**, **Oil level low** and **Software version** move to Diagnostic (health warnings that normally read OK, and versions).

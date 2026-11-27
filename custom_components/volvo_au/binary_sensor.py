@@ -164,6 +164,7 @@ class VolvoBinaryDescription(BinarySensorEntityDescription):
     value_fn: Callable[[dict[str, Any]], bool | None]
     attrs_fn: Callable[[dict[str, Any]], dict[str, Any]] | None = None
     requires_capability: str | None = None
+    requires_charge_port_status: bool = False
     icon_on: str | None = None
     icon_off: str | None = None
 
@@ -252,6 +253,7 @@ DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
     VolvoBinaryDescription(
         key="charge_port",
         translation_key="charge_port",
+        requires_charge_port_status=True,
         device_class=BinarySensorDeviceClass.OPENING,
         value_fn=lambda s: _open(s, "tankLid"),
     ),
@@ -386,6 +388,7 @@ class VolvoBinarySensor(VolvoEntity, BinarySensorEntity):
         super().__init__(coordinator)
         self.entity_description = description
         self.requires_capability = description.requires_capability
+        self.requires_charge_port_status = description.requires_charge_port_status
         self._attr_unique_id = f"{DOMAIN}_{coordinator.client.vin}_{description.key}"
 
     @property

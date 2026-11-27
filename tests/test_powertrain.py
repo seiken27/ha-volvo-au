@@ -236,3 +236,18 @@ def test_in_use_follows_driving_or_the_car_in_use_reason():
     assert powertrain.in_use({"usageMode": "USAGE_MODE_INACTIVE", "unavailableReason": "UNAVAILABLE_REASON_NO_INTERNET"}, False) is False
     assert powertrain.in_use({}, None) is None
     assert powertrain.in_use(None, None) is None
+
+
+@pytest.mark.parametrize(
+    ("car", "expected"),
+    [
+        ({"modelName": "XC40", "engineType": "ELECTRIC"}, False),
+        ({"modelName": "C40", "engineType": "ELECTRIC"}, False),
+        ({"modelName": "XC40", "engineType": "PETROL_HYBRID"}, True),
+        ({"modelName": "EX30", "engineType": "ELECTRIC"}, True),
+        ({"modelName": "XC40"}, None),
+        (None, None),
+    ],
+)
+def test_charge_port_hidden_on_electric_xc40_and_c40(car, expected):
+    assert powertrain.reports_charge_port(car) is expected

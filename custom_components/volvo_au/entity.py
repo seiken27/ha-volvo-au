@@ -9,7 +9,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import VolvoCoordinator
-from .powertrain import capability, has_combustion_engine, supports_engine_remote_start
+from .powertrain import capability, has_combustion_engine, reports_charge_port, supports_engine_remote_start
 
 
 class VolvoEntity(CoordinatorEntity[VolvoCoordinator]):
@@ -26,6 +26,8 @@ class VolvoEntity(CoordinatorEntity[VolvoCoordinator]):
     # Name of a snapshot section (``pre_cleaning``, ``amp_limit``, ...). The entity is hidden when the first poll
     # found that section empty, which catches cars that do not say they lack a feature but have no data for it.
     requires_data: str | None = None
+    # True for the charge port status, which electric XC40/C40s never update (see powertrain.reports_charge_port).
+    requires_charge_port_status = False
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
         super().__init__(coordinator)
@@ -66,6 +68,7 @@ def _is_gated(entity: VolvoEntity) -> bool:
         or entity.requires_engine_remote_start
         or entity.requires_capability
         or entity.requires_data
+        or entity.requires_charge_port_status
     )
 
 
@@ -76,6 +79,8 @@ def _is_unsupported(entity: VolvoEntity, car: dict | None, no_data: frozenset[st
     if entity.requires_combustion_engine and has_combustion_engine(car) is False:
         return True
     if entity.requires_engine_remote_start and supports_engine_remote_start(car) is False:
+        return True
+    if entity.requires_charge_port_status and reports_charge_port(car) is False:
         return True
     return bool(entity.requires_capability) and capability(car, entity.requires_capability) is False
 
