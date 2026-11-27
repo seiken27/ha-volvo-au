@@ -319,7 +319,8 @@ def test_connection_state_is_short_and_has_no_clock_time(monkeypatch):
 
     assert online.status_text(status(True)) == "Online"
     assert online.status_text(status(None)) == "Unknown"
-    assert online.status_text(status(False, "UNAVAILABLE_REASON_CAR_IN_USE")) == "Offline: car in use"
+    assert online.status_text(status(False, "UNAVAILABLE_REASON_CAR_IN_USE")) == "In use"
+    assert online.status_text(status(False, "UNAVAILABLE_REASON_CAR_IN_REMOTE_USE")) == "In use from the app"
     assert online.status_text(status(False, "UNAVAILABLE_REASON_NO_INTERNET")) == "Offline: no internet"
     assert online.status_text(status(False)) == "Offline: no connection"
     assert online.status_detail(status(False, "UNAVAILABLE_REASON_CAR_IN_USE")).startswith("The car is in use. Commands cannot reach")

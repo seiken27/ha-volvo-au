@@ -16,6 +16,7 @@ Dates are 2026.
 
 ### Changed
 
+- **Connection reads "In use" while the car is being used**, matching the Volvo app, instead of "Offline: car in use" ("In use from the app" for Volvo's remote-use reason). Volvo reports the car unavailable for remote commands while it is driven, so it never really was offline. Other reasons still read "Offline: …". The In use binary sensor is unchanged. Matches Polestar C3.
 - **README:** an unofficial and unsupported warning at the top and a fuller Disclaimer, pointing to Volvo's official Home Assistant integration for the regions its API supports.
 - Documentation uses GitHub alert boxes (note, tip, important, warning) for the points that matter.
 - **FAQ: new Volvo sign-in page.** Since late November Volvo ID forwards sign-in to a new page on `auth.volvocars.com`. The integration works with it unchanged (tested 27 November with Reconfigure); the FAQ explains what to expect.

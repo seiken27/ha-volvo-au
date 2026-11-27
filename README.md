@@ -64,7 +64,7 @@ Volvo C3 and [Polestar C3](https://github.com/BeauGiles/ha-polestar-c3) talk to 
 | --- | :---: | :---: |
 | Lock, unlock, lock with reduced alarm | ✅ | ✅ |
 | Boot lock (unlock the tailgate only) | ✅ | ✅ |
-| Open and close tailgate | ✅ | ➖ |
+| Open and close tailgate | ✅ | 🧪 |
 | Flash lights, honk, honk and flash | ✅ | ✅ |
 | Open and close all windows | ✅ | ✅ |
 | Start and stop climate | ✅ | ✅ |
@@ -110,7 +110,7 @@ Every command shows an error in Home Assistant when Volvo refuses it or does not
 | Button | Flash lights, Honk, Honk and flash, Lock with reduced alarm, Open and Close windows, Tailgate control, Close tailgate, Engine remote start, Refresh |
 | Time | Charging schedule start and end |
 
-Entity IDs come from the car model and registration, for example `sensor.xc40_abc123_state_of_charge`. Which entities appear depends on what the car supports. The **Online** sensor says whether the car can receive commands now, and **Connection** reads "Online" or a short "Offline: reason", with the full explanation and the time the car went offline as attributes.
+Entity IDs come from the car model and registration, for example `sensor.xc40_abc123_state_of_charge`. Which entities appear depends on what the car supports. The **Online** sensor says whether the car can receive commands now, and **Connection** reads "Online", "In use" while the car is being driven (as the Volvo app shows), or a short "Offline: reason", with the full explanation and the time the car went offline as attributes.
 
 ## Install
 

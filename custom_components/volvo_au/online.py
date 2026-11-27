@@ -165,13 +165,13 @@ def reason_text(raw: dict[str, Any] | None) -> str:
 _SHORT_REASONS = {
     "NO_INTERNET": "no internet",
     "POWER_SAVING_MODE": "power saving",
-    "CAR_IN_USE": "car in use",
-    "CAR_IN_REMOTE_USE": "in use from the app",
 }
 
 
 def status_text(st: CarStatus) -> str:
-    """Short state of the Connection sensor: "Online", "Offline: car in use" or "Unknown".
+    """Short state of the Connection sensor: "Online", "In use", "Offline: no internet" or "Unknown".
+
+    "In use" matches the Volvo app: Volvo reports the car unavailable because it is being used.
 
     Short and free of clock times so the history stays quiet; the explanation and the time are attributes
     (``status_detail``, ``offline_since``) and the Last seen sensor.
@@ -181,6 +181,10 @@ def status_text(st: CarStatus) -> str:
     if st.online:
         return "Online"
     key = str((st.raw or {}).get("unavailableReason") or "").upper().replace("UNAVAILABLE_REASON_", "")
+    if key == "CAR_IN_USE":
+        return "In use"
+    if key == "CAR_IN_REMOTE_USE":
+        return "In use from the app"
     short = _SHORT_REASONS.get(key) if key and key != "UNSPECIFIED" else None
     return f"Offline: {short or 'no connection'}"
 
