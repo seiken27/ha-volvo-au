@@ -23,7 +23,7 @@ Reports of what works and what doesn't on your model are welcome. Please [open a
 
 ## Features
 
-Volvo C3 and [Polestar C3](https://github.com/BeauGiles/ha-polestar-c3) talk to the same Volvo Cars C3 platform, so most features are the same. This table is shared by both READMEs.
+Volvo C3 and [Polestar C3](https://github.com/BeauGiles/ha-polestar-c3) talk to the same Volvo Cars C3 platform, so most features are the same. Both READMEs share this table, each with its own integration in the first column.
 
 ✅ supported · 🧪 experimental (limited testing) · ◐ only on cars that report it · ➖ not available
 
@@ -46,6 +46,7 @@ Volvo C3 and [Polestar C3](https://github.com/BeauGiles/ha-polestar-c3) talk to 
 | Odometer, trip meters, average consumption, average speed | ✅ | ✅ (average speed hidden on the Polestar 2) |
 | Outside temperature | ✅ | ✅ |
 | Service required (with urgency), days, distance and engine hours to service | ✅ | ✅ |
+| Service plan (prepaid service contract: products, end dates, mileage limits) | ➖ | 🧪 |
 | Tyre warning, per-wheel grades | ◐ | ◐ |
 | Per-wheel tyre pressures | ◐ | ◐ |
 | 12V battery, brake fluid, washer fluid, light status | ✅ | ✅ |
