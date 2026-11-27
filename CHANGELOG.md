@@ -6,6 +6,14 @@ Dates are 2026.
 
 ## Unreleased
 
+### Added
+
+- **Battery thermal event** binary sensor (safety): a high-voltage battery thermal event reported by the car (`batteryThermalEventTriggered`, health field 48, as named in the Volvo app, which has a help screen for it). The car leaves the field out when there is no event, so it reads off. Matches Polestar C3. Not yet seen from a real car.
+
+### Fixed
+
+- **Streamed values survive a failed poll.** When a poll could not read a section (an error or an empty reply) that a live stream had delivered, such as the odometer or battery, the poll wiped it until the next stream message. The streamed value is now kept. Same fix as ericyew's for Polestar ([0da9bc1](https://github.com/ericyew/unofficial-polestar-api/commit/0da9bc1b692d86bf5f115464cd1ed80f2829f6eb)).
+
 ### Changed
 
 - **README:** an unofficial and unsupported warning at the top and a fuller Disclaimer, pointing to Volvo's official Home Assistant integration for the regions its API supports.

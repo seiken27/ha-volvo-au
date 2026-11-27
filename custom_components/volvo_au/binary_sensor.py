@@ -83,6 +83,18 @@ def _connected(snap: dict[str, Any]) -> bool | None:
     return v.endswith("_CONNECTED")
 
 
+def _battery_thermal_event(snap: dict[str, Any]) -> bool | None:
+    """Health field 48, ``batteryThermalEventTriggered`` (Volvo app's own name).
+
+    Proto3 JSON leaves a false bool out, so a health reply without the key
+    means no event. Without any health reply the state is unknown.
+    """
+    h = (snap.get("health") or {}).get("health")
+    if not isinstance(h, dict):
+        return None
+    return h.get("batteryThermalEventTriggered") is True
+
+
 def _warning(snap: dict[str, Any], key: str) -> bool | None:
     """True when the warning enum signals an active fault."""
     h = (snap.get("health") or {}).get("health") or {}
@@ -304,6 +316,14 @@ DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
         icon_off="mdi:car-battery",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda s: _warning(s, "lowVoltageBatteryWarning"),
+    ),
+    VolvoBinaryDescription(
+        key="battery_thermal_event",
+        translation_key="battery_thermal_event",
+        icon_on="mdi:fire-alert",
+        icon_off="mdi:car-battery",
+        device_class=BinarySensorDeviceClass.SAFETY,
+        value_fn=_battery_thermal_event,
     ),
     VolvoBinaryDescription(
         key="light_warning",

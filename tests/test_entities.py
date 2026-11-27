@@ -166,6 +166,52 @@ def test_climate_choices_start_empty(volvo):
     assert hasattr(volvo.coordinator, "VolvoCoordinator") and coordinator is not None
 
 
+@pytest.mark.parametrize(
+    ("health", "expected"),
+    [
+        (None, None),  # no health reply: unknown
+        ({}, False),  # proto3 JSON leaves a false bool out
+        ({"batteryThermalEventTriggered": True}, True),
+        ({"batteryThermalEventTriggered": False}, False),
+    ],
+)
+def test_battery_thermal_event(volvo, health, expected):
+    snap = {} if health is None else {"health": {"health": health}}
+    assert volvo.binary_sensor._battery_thermal_event(snap) is expected
+
+
+def _coordinator_with(volvo, data, streamed):
+    coordinator = volvo.coordinator.VolvoCoordinator.__new__(volvo.coordinator.VolvoCoordinator)
+    coordinator.data = data
+    coordinator._streamed = set(streamed)
+    return coordinator
+
+
+def test_poll_keeps_a_streamed_section_it_failed_to_read(volvo):
+    # Port of ericyew 0da9bc1 (Polestar): a full poll must not wipe a value
+    # that only a live stream delivers.
+    old = {"odometer": {"odometer": {"odometerMeters": "1000"}}, "battery": {"battery": {"chargeLevel": 50}}}
+    coordinator = _coordinator_with(volvo, old, {"odometer", "battery"})
+    snap = {"odometer": {"_error": "VolvoApiError: boom"}, "battery": {}, "health": {"health": {}}}
+
+    kept = coordinator._keep_streamed(snap)
+
+    assert kept["odometer"] == old["odometer"]
+    assert kept["battery"] == old["battery"]
+    assert kept["health"] == {"health": {}}
+
+
+def test_poll_replaces_streamed_sections_it_did_read_and_ignores_unstreamed(volvo):
+    old = {"odometer": {"odometer": {"odometerMeters": "1000"}}, "weather": {"w": 1}}
+    coordinator = _coordinator_with(volvo, old, {"odometer"})
+    snap = {"odometer": {"odometer": {"odometerMeters": "1010"}}, "weather": {"_error": "x"}}
+
+    kept = coordinator._keep_streamed(snap)
+
+    assert kept["odometer"]["odometer"]["odometerMeters"] == "1010"
+    assert kept["weather"] == {"_error": "x"}  # not streamed: the poll's answer stands
+
+
 # ---- first poll with no data -------------------------------------------------------------------------------------
 
 

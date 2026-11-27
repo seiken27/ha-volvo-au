@@ -82,6 +82,8 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         client.supports_journal = self.driving_journal
         client.local_now = dt_util.now
         self._stream_tasks: dict[str, asyncio.Task[None]] = {}
+        # Sections a live stream has delivered; a failed or empty poll keeps their value.
+        self._streamed: set[str] = set()
         self.stream_policies: dict[str, StreamPolicy] = {}
         # The active poll is never slower than the idle one.
         self._active_interval = min(active_interval, idle_interval)
@@ -129,6 +131,8 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise UpdateFailed(f"auth: {e}") from e
         except VolvoApiError as e:
             raise UpdateFailed(f"api: {e}") from e
+
+        snap = self._keep_streamed(snap)
 
         if not self._first_poll_done:
             self._first_poll_done = True
@@ -236,7 +240,25 @@ class VolvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 return
             await asyncio.sleep(delay)
 
+    def _keep_streamed(self, snap: dict[str, Any]) -> dict[str, Any]:
+        """Keep streamed sections that this poll failed to read or got back empty.
+
+        A live stream may be the only source that works for a section (the same
+        bug ericyew fixed for the Polestar odometer). Without this, a failed or
+        empty poll would wipe the streamed value until the next stream frame.
+        """
+        if not self.data or not self._streamed:
+            return snap
+        kept = {}
+        for name in self._streamed:
+            new, old = snap.get(name), self.data.get(name)
+            if (not new or "_error" in new) and old and "_error" not in old:
+                kept[name] = old
+        return {**snap, **kept} if kept else snap
+
     def _apply_stream_frame(self, name: str, frame: dict[str, Any]) -> None:
+        if frame:
+            self._streamed.add(name)
         if self.data is None or self.data.get(name) == frame:
             return
         data = {**self.data, name: frame}

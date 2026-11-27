@@ -49,6 +49,8 @@ Volvo C3 and [Polestar C3](https://github.com/BeauGiles/ha-polestar-c3) talk to 
 | Tyre warning, per-wheel grades | ◐ | ◐ |
 | Per-wheel tyre pressures | ◐ | ◐ |
 | 12V battery, brake fluid, washer fluid, light status | ✅ | ✅ |
+| Battery thermal event (high-voltage battery safety) | 🧪 | 🧪 |
+| Cold battery status | ➖ | 🧪 |
 | Engine coolant, oil level (combustion cars) | ◐ | ➖ |
 | Climate status and time remaining | ➖ | ✅ |
 | Cabin air quality | ✅ | ✅ |
@@ -99,7 +101,7 @@ Every command shows an error in Home Assistant when Volvo refuses it or does not
 | Platform | Examples |
 | --- | --- |
 | Sensor | State of charge, range, charging status, charger connection, charging power, odometer, trip meters, service sensors, tyre pressures, software version, Connection, Vehicle info, VIN |
-| Binary sensor | Online, In use, Plugged in, Alarm triggered, Tyre warning, Service required, 12V battery, Brake fluid, Washer fluid, Light status, doors, windows, hood, tailgate, sunroof, charge port |
+| Binary sensor | Online, In use, Plugged in, Alarm triggered, Tyre warning, Service required, 12V battery, Brake fluid, Washer fluid, Light status, Battery thermal event, doors, windows, hood, tailgate, sunroof, charge port |
 | Device tracker | Location |
 | Lock | Lock, Boot lock |
 | Switch | Climate, Charging, Charging schedule, Air purification |

@@ -91,6 +91,9 @@
       "low_voltage_battery_warning": {
         "name": "12V battery"
       },
+      "battery_thermal_event": {
+        "name": "Battery thermal event"
+      },
       "oil_level_warning": {
         "name": "Oil level low"
       },
