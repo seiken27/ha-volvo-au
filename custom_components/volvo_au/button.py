@@ -58,8 +58,8 @@ COMMAND_BUTTONS: list[tuple[str, str, str, str, str, dict[str, Any]]] = [
     ("window_close", "Close windows", "mdi:window-closed", "Close windows", "window_control", {"open": False}),
     ("engine_remote_start", "Engine remote start", "mdi:engine", "Engine remote start", "engine_remote_start", {}),
     ("reduced_alarm", "Lock with reduced alarm", "mdi:lock-alert", "Lock with reduced alarm", "reduced_alarm", {}),
-    ("tailgate_control", "Tailgate control", "mdi:truck-tailgate", "Open tailgate", "tailgate_control", {"open": True}),
-    ("tailgate_close", "Close tailgate", "mdi:truck-tailgate-closed", "Close tailgate", "tailgate_control", {"open": False}),
+    ("tailgate_control", "Open boot", "mdi:arrow-up-box", "Open boot", "tailgate_control", {"open": True}),
+    ("tailgate_close", "Close boot", "mdi:arrow-down-box", "Close boot", "tailgate_control", {"open": False}),
 ]
 
 

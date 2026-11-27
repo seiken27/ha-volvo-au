@@ -652,7 +652,7 @@ class VolvoSoftwareVersion(VolvoEntity, SensorEntity):
 
     _attr_translation_key = "software_version"
     _attr_icon = "mdi:update"
-    _attr_entity_category = None
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, coordinator: VolvoCoordinator) -> None:
         super().__init__(coordinator)

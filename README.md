@@ -39,7 +39,7 @@ Volvo C3 and [Polestar C3](https://github.com/BeauGiles/ha-polestar-c3) talk to 
 | Saved charge locations, "at charge location" | ➖ | ✅ |
 | Location, with address | ✅ | ✅ |
 | Parked location, altitude, heading, speed | ➖ | ✅ |
-| Doors, windows, hood, tailgate | ✅ | ✅ |
+| Doors, windows, bonnet, boot | ✅ | ✅ |
 | Sunroof | ◐ | ➖ |
 | Central lock, boot lock | ✅ | ✅ |
 | Alarm triggered, In use, Online, Connection | ✅ | ✅ |
@@ -64,8 +64,8 @@ Volvo C3 and [Polestar C3](https://github.com/BeauGiles/ha-polestar-c3) talk to 
 | Feature | Volvo C3 | Polestar C3 |
 | --- | :---: | :---: |
 | Lock, unlock, lock with reduced alarm | ✅ | ✅ |
-| Boot lock (unlock the tailgate only) | ✅ | ✅ |
-| Open and close tailgate | ✅ | 🧪 |
+| Boot lock (unlock the boot only) | ✅ | ✅ |
+| Open and close boot (power tailgate) | ✅ | ✅ |
 | Flash lights, honk, honk and flash | ✅ | ✅ |
 | Open and close all windows | ✅ | ✅ |
 | Start and stop climate | ✅ | ✅ |
@@ -102,13 +102,13 @@ Every command shows an error in Home Assistant when Volvo refuses it or does not
 | Platform | Examples |
 | --- | --- |
 | Sensor | State of charge, range, charging status, charger connection, charging power, odometer, trip meters, service sensors, tyre pressures, software version, Connection, Vehicle info, VIN |
-| Binary sensor | Online, In use, Plugged in, Alarm triggered, Tyre warning, Service required, 12V battery, Brake fluid, Washer fluid, Light status, Battery thermal event, doors, windows, hood, tailgate, sunroof, charge port |
+| Binary sensor | Online, In use, Plugged in, Alarm triggered, Tyre warning, Service required, 12V battery, Brake fluid, Washer fluid, Light status, Battery thermal event, doors, windows, bonnet, boot, sunroof, charge port |
 | Device tracker | Location |
 | Lock | Lock, Boot lock |
 | Switch | Climate, Charging, Charging schedule, Air purification |
 | Number | Target SoC, Charging amp limit, Climate target temperature |
 | Select | Seat and steering wheel heating |
-| Button | Flash lights, Honk, Honk and flash, Lock with reduced alarm, Open and Close windows, Tailgate control, Close tailgate, Engine remote start, Refresh |
+| Button | Flash lights, Honk, Honk and flash, Lock with reduced alarm, Open and Close windows, Open and Close boot, Engine remote start, Refresh |
 | Time | Charging schedule start and end |
 
 Entity IDs come from the car model and registration, for example `sensor.xc40_abc123_state_of_charge`. Which entities appear depends on what the car supports. The **Online** sensor says whether the car can receive commands now, and **Connection** reads "Online", "In use" while the car is being driven (as the Volvo app shows), or a short "Offline: reason", with the full explanation and the time the car went offline as attributes.

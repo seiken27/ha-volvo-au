@@ -277,18 +277,21 @@ DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
         icon_on="mdi:alert-circle",
         icon_off="mdi:car-brake-fluid-level",
         device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda s: _warning(s, "brakeFluidLevelWarning"),
     ),
     VolvoBinaryDescription(
         key="engine_coolant_warning",
         translation_key="engine_coolant_warning",
         device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda s: _warning(s, "engineCoolantLevelWarning"),
     ),
     VolvoBinaryDescription(
         key="oil_level_warning",
         translation_key="oil_level_warning",
         device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda s: _warning(s, "oilLevelWarning"),
     ),
     VolvoBinaryDescription(
@@ -315,6 +318,7 @@ DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
         icon_on="mdi:battery-alert",
         icon_off="mdi:car-battery",
         device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda s: _warning(s, "lowVoltageBatteryWarning"),
     ),
     VolvoBinaryDescription(
@@ -323,6 +327,7 @@ DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
         icon_on="mdi:fire-alert",
         icon_off="mdi:car-battery",
         device_class=BinarySensorDeviceClass.SAFETY,
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=_battery_thermal_event,
     ),
     VolvoBinaryDescription(
@@ -332,6 +337,7 @@ DESCRIPTIONS: tuple[VolvoBinaryDescription, ...] = (
         icon_on="mdi:alert-circle",
         icon_off="mdi:car-light-alert",
         device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=_any_light_warning,
         attrs_fn=_light_attributes,
     ),

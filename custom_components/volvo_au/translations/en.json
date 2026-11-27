@@ -102,7 +102,7 @@
         "name": "Engine coolant low"
       },
       "hood": {
-        "name": "Hood"
+        "name": "Bonnet"
       },
       "in_use": {
         "name": "In use"
@@ -132,7 +132,7 @@
         "name": "Sunroof"
       },
       "tailgate": {
-        "name": "Tailgate"
+        "name": "Boot"
       },
       "washer_fluid_warning": {
         "name": "Washer fluid"
@@ -173,10 +173,10 @@
         "name": "Refresh"
       },
       "tailgate_close": {
-        "name": "Close tailgate"
+        "name": "Close boot"
       },
       "tailgate_control": {
-        "name": "Tailgate control"
+        "name": "Open boot"
       },
       "window_close": {
         "name": "Close windows"
